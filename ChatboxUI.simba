@@ -1,0 +1,260 @@
+type
+  TRSChatboxUI = record(TInterfaceBase)
+    FAmountsText, FOptionText, FAmountButtons, FOptionButtons: TBoxArray;
+    TextColorWhite, TextColorBrown, BoxColor, BoxSelectedColor: Integer;
+  end;
+
+var
+  ChatboxUI: TRSChatboxUI;
+
+
+{$IFNDEF CODEINSIGHT}
+procedure TRSChatboxUI.__Setup();
+var i:Int32;
+begin
+  Self.TextColorWhite := 16777215;
+  Self.TextColorBrown := 2109504;
+  Self.BoxColor := 8101298;
+  Self.BoxSelectedColor := 6191241;
+
+  Self.FBounds := [6, 344, 512, 474];
+  Self.FName := 'ChatboxUI';
+  Self.FStatic := False;
+
+  Self.FAmountsText += Box(471, 360, 493, 373);
+  for i := 3 downto 0 do
+    Self.FAmountsText += Box(331+35*i, 360, 348+35*i, 373);
+
+  for i := 0 to 4 do
+    Self.FOptionText += Box(35+101*i, 461, 81+101*i, 474);
+
+  Self.FAmountButtons += Box(465, 353, 499, 382);
+  for i := 3 downto 0 do
+    Self.FAmountButtons += Box(325+35*i, 353, 354+35*i, 382);
+
+  for i := 0 to 4 do
+    Self.FOptionButtons += Box(12+101*i, 389, 104+101*i, 460);
+
+end;
+
+procedure TRSChatboxUI.Debug();
+var
+  BMP:TMufasaBitmap;
+begin
+  if not Self._Find() then
+    Exit();
+  BMP := GetMufasaBitmap( BitmapFromClient(SRL.DefaultClientBounds) );
+
+  BMP.DrawBoxes(Self.FAmountsText, False, $FFFFFF);
+  BMP.DrawBoxes(Self.FOptionText, False, $FFFFFF);
+
+  BMP.DrawBoxes(Self.FAmountButtons, False, $0000FF);
+  BMP.DrawBoxes(Self.FOptionButtons, False, $FFFFFF);
+
+  BMP.DrawBox(FBounds, False, $00FF00);
+  BMP.Debug();
+  BMP.Free();
+end;
+{$ENDIF}
+
+
+function TRSChatboxUI._Find(): Boolean;
+var
+  p: TPoint;
+begin
+  Result := srl.FindText(p, 'All', 'StatChars07', Self.TextColorWhite, 0, Self.FAmountsText[0]) or
+            srl.FindText(p, 'All', 'StatChars07', Self.TextColorWhite, 0, Self.FAmountsText[0]);
+
+  if Result then
+    Self._ResetBoxes();
+end;
+
+function TRSChatboxUI.IsOpen(WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self._Find()) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+procedure TRSChatboxUI._ResetBoxes();
+var
+  EmptyTBoxArray: TBoxArray;
+  i: Int32;
+begin
+
+  FAmountsText := EmptyTBoxArray;
+  FOptionText := EmptyTBoxArray;
+  FAmountButtons := EmptyTBoxArray;
+  FOptionButtons := EmptyTBoxArray;
+
+  Self.FAmountsText += Box(471, 360, 493, 373);
+  for i := 3 downto 0 do
+    Self.FAmountsText += Box(331+35*i, 360, 348+35*i, 373);
+
+  for i := 0 to 4 do
+    Self.FOptionText += Box(35+101*i, 461, 81+101*i, 474);
+
+  Self.FAmountButtons += Box(465, 353, 499, 382);
+  for i := 3 downto 0 do
+    Self.FAmountButtons += Box(325+35*i, 353, 354+35*i, 382);
+
+  for i := 0 to 4 do
+    Self.FOptionButtons += Box(12+101*i, 389, 104+101*i, 460);
+
+  Self._FixAmounts();
+  Self._FixOptions();
+end;
+
+procedure TRSChatboxUI._FixAmounts();
+var
+  ValidAmountsText, ValidAmounts: TBoxArray;
+  i: Int32;
+  p: TPointArray;
+begin
+  // This next 2 lines prevent the chat ui find function from being messed up if the chat ui is close
+   ValidAmountsText += Self.FAmountsText[0];
+   ValidAmounts += Self.FAmountButtons[0];
+
+  for i := 1 to High(Self.FAmountButtons) do
+  begin
+    if FindColors(p, Self.BoxColor, Self.FAmountButtons[i]) or FindColors(p, Self.BoxSelectedColor, Self.FAmountButtons[i]) then
+    begin
+      ValidAmountsText += Self.FAmountsText[i];
+      ValidAmounts += Self.FAmountButtons[i];
+    end;
+  end;
+
+  Self.FAmountsText := ValidAmountsText;
+  Self.FAmountButtons := ValidAmounts;
+end;
+
+procedure TRSChatboxUI._FixOptions();
+var
+  ValidOptionsText, ValidOptions: TBoxArray;
+  i: Int32;
+  p: TPointArray;
+begin
+  for i := 0 to High(Self.FOptionButtons) do
+  begin
+    if FindColors(p, Self.BoxColor, Self.FOptionButtons[i]) or FindColors(p, Self.BoxSelectedColor, Self.FOptionButtons[i]) then
+    begin
+      ValidOptionsText += Self.FOptionText[i];
+      ValidOptions += Self.FOptionButtons[i];
+    end;
+  end;
+
+  Self.FOptionText := ValidOptionsText;
+  Self.FOptionButtons := ValidOptions;
+end;
+
+function TRSChatboxUI.IsAmountValid(idx: Int32): Boolean;
+begin
+  Result := (idx >= 0) and (idx <= Length(Self.FAmountsText));
+end;
+
+function TRSChatboxUI.IsOptionValid(idx: Int32): Boolean;
+begin
+  Result := (idx >= 0) and (idx <= Length(Self.FOptionText));
+end;
+
+function TRSChatboxUI.IsAmountSelected(idx: Int32): Boolean;
+var
+  p: TPointArray;
+begin
+  if not Self.IsAmountValid(idx) then
+    Exit(False);
+  Result := FindColors(p, Self.TextColorWhite, Self.FAmountsText[idx]);
+end;
+
+function TRSChatboxUI.IsOptionSpace(idx: Int32): Boolean;
+var
+  p: TPointArray;
+begin
+  if not Self.IsOptionValid(idx) then
+    Exit(False);
+
+  if srl.FindText(p, 'Space', 'StatChars07', Self.TextColorBrown, 0, Self.FOptionText[idx]) or
+  (not FindColors(p, Self.TextColorBrown, Self.FOptionText[idx])) then
+    Exit(True)
+  else
+    Exit(False);
+end;
+
+function TRSChatboxUI.ClickAmount(idx: Int32; MouseBtn: Int32 = mouse_Move): Boolean;
+begin
+  if (not Self.IsAmountValid(idx)) or (not Self.IsOpen()) then
+    Exit(False);
+
+  Mouse.Move(self.FAmountButtons[idx]);
+  if (MouseBtn <> mouse_Move) then
+      Mouse.Click(MouseBtn);
+end;
+
+function TRSChatboxUI.SelectAmount(idx: Int32 = 0): Boolean;
+begin
+  if Self.IsAmountSelected(idx) then
+    Exit(True)
+  else
+    Self.ClickAmount(idx, mouse_Left);
+
+  Result := Self.IsAmountSelected(idx);
+end;
+
+
+function TRSChatboxUI.ClickOption(idx: Int32; MouseBtn: Int32 = mouse_Move): Boolean;
+begin
+  if (not Self.IsOptionValid(idx)) or (not Self.IsOpen()) then
+    Exit(False);
+
+  Mouse.Move(self.FOptionButtons[idx]);
+  if (MouseBtn <> mouse_Move) then
+      Mouse.Click(MouseBtn);
+end;
+
+function TRSChatboxUI.SelectOption(idx: Int32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+
+  Result := False;
+
+  // I linked this to SRL close with escape because I think that the players that
+  // use the space key on the chat UI are also the ones that close the bank with escape.
+  // also added a random chance of roughly 6/8% of it doing it with the mouse
+  if (Self.IsOptionSpace(idx) and srl.CloseInterfacesWithEscape
+  and (Random(0, 99) > Random(3, 10))) then
+    Keyboard.PressKey(VK_SPACE)
+  else
+    Self.ClickOption(idx, mouse_Left);
+
+  t := GetTickCount() + Random(2000, 3000);
+  while (t > GetTickCount()) do
+  begin
+    if (not Self.IsOpen()) then
+      Exit(True);
+  end;
+
+end;
+
+function TRSChatboxUI.SelectDTM(DTM: Integer): Boolean;
+var
+  idx: TIntArray;
+begin
+  idx := SRL.FindDTMInTBA(DTM, Self.FOptionButtons, 1);
+  if idx then
+    Result := Self.SelectOption(idx[0])
+  else
+    Result := False;
+end;
+
+
+begin
+  ChatboxUI.__Setup();
+end;

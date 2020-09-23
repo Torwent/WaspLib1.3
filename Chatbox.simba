@@ -1,0 +1,110 @@
+function TRSChatbox.IsScrollableUp(): Boolean;
+begin
+  Result := GetColor(505, 365) = 1778729;
+end;
+
+function TRSChatbox.IsScrollableDown(): Boolean;
+begin
+  Result := GetColor(505, 440) = 1778729;
+end;
+
+function TRSChatbox.IsScrollable(): Boolean;
+begin
+  Result := Self.IsScrollableUp() or Self.IsScrollableDown();
+end;
+
+function TRSChatbox.ScrollUp(WaitTime: UInt64 = 1000): Boolean;
+var
+  t: UInt64;
+begin
+  if not Self.IsScrollableUp() then
+    Exit(True);
+
+  Mouse.Move(Self.FLines.Merge());
+
+  t := GetTickCount() + WaitTime;
+  while (Self.IsScrollableUp()) do
+  begin
+    Mouse.Scroll(Random(2, 5), False);
+    if ((not Self.IsScrollableUp()) and (t > GetTickCount())) then
+      Exit(True);
+  end;
+
+  Result := True;
+end;
+
+function TRSChatbox.ScrollDown(WaitTime: UInt64 = 1000): Boolean;
+var
+  t: UInt64;
+begin
+  if not Self.IsScrollableDown() then
+    Exit(True);
+
+  Mouse.Move(Self.FLines.Merge());
+
+  t := GetTickCount() + WaitTime;
+  while (Self.IsScrollableDown()) do
+  begin
+    Mouse.Scroll(Random(2, 5), True);
+    if ((not Self.IsScrollableDown()) and (t > GetTickCount())) then
+      Exit(True);
+  end;
+
+  Result := True;
+end;
+
+function TRSChatbox.RandomScroll(): Boolean;
+begin
+  case Random(0, 2) of
+    0: Result := Self.ScrollUp(Random(1000, 2000));
+    1: Result := Self.ScrollDown(Random(1000, 2000));
+    2: Result := Self.ScrollDown(Random(2000, 3000));
+  end;
+end;
+
+
+
+function TRSChatbox.IsTabActive(Tab: EChatTab): Boolean;
+var
+  TabBox: TBox;
+  ColorCount, ColorCountBlue: Int32;
+begin
+  TabBox := FTabs[ord(Tab)];
+  TabBox.X1 := (TabBox.X2 - Round(TabBox.Width/4));
+
+  ColorCount := CountColorTolerance(4281441, TabBox, 13);
+  ColorCountBlue := CountColorTolerance(2498337, TabBox, 13);
+
+  if ColorCountBlue > 100 then
+    Exit(False);
+  Result := ((ColorCount < 14) or (ColorCount > 22));
+end;
+
+function TRSChatbox.GetActiveTab(): EChatTab;
+var
+  i: Int32;
+begin
+  for i := 0 to High(Self.FTabs) do
+  begin
+    if Self.IsTabActive(EChatTab(i)) then
+      Exit(EChatTab(i));
+  end
+end;
+
+function TRSChatbox.ClickTab(tab: EChatTab; Option: String = ''): Boolean; override;
+begin
+  if Self.IsTabActive(tab) then
+    Exit(True);
+
+  Result := True;
+
+  if (Option = '') then
+    Mouse.Click(FTabs[ord(tab)], mouse_Left)
+  else
+  begin
+    Mouse.Move(FTabs[ord(tab)]);
+    if (not ChooseOption.Open()) or (not ChooseOption.Select(Option)) then
+      Exit(False);
+  end;
+end;
+

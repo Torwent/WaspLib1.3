@@ -1,0 +1,222 @@
+(*
+WorldSwitcher
+=============
+Methods that relates to swithing world. Olly will one day document this some day.
+*)
+type
+  ERSWorldProperty = (WORLD_FREE, WORLD_MEMBERS,
+                      WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_EVENT,
+                      WORLD_USA, WORLD_GERMANY, WORLD_UK, WORLD_AUSTRALIA
+                     );
+  TRSWorldProperties = set of ERSWorldProperty;
+
+  TRSWorld = record
+    ID: Int32;
+    Properties: TRSWorldProperties;
+  end;
+  TRSWorldArray = array of TRSWorld;
+
+  TRSWorldFilter = record
+    Properties: TRSWorldProperties;
+    Worlds: TIntegerArray;
+  end;
+
+var
+  DEFAULT_WORLD_FILTER: TRSWorldFilter = [[WORLD_PVP, WORLD_DEADMAN, WORLD_SKILL, WORLD_EVENT, WORLD_AUSTRALIA], [302, 330]]; // 302 & 330 are often full.
+
+type
+  TRSWorldSwitcher = record(TInterfaceBase)
+    Worlds: TRSWorldArray; // Must be initalized once with WorldSwitcher.Worlds.Load()
+ end;
+
+var
+  WorldSwitcher: TRSWorldSwitcher;
+
+procedure TRSWorldArray.Load;
+var
+  List, Info: TStringArray;
+  World: TRSWorld;
+  Prop: String;
+  i: Int32;
+begin
+  List := MultiBetween(GetPage('http://oldschool.runescape.com/slu'), '<tr class=''server-list__row', '</tr>');
+
+  for i := 0 to High(List) do
+  begin
+    // [0]URL
+    // [1]Players
+    // [2]Location
+    // [3]Type
+    // [4]Activity
+
+    Info := MultiBetween(List[i], 'server-list__row-cell', '</td>');
+    if (Length(Info) <> 5) then
+      Continue;
+
+    World := [StrToIntDef(Between('world-', '''', Info[0]), - 1)];
+    if (World.ID > 400) then
+      World.Properties += WORLD_EVENT;
+
+    for Prop in [Info[2], Info[3], Info[4]] do
+      case LowerCase(Copy(Prop, Pos('>', Prop) + 1)) of
+        'members':
+          World.Properties += WORLD_MEMBERS;
+        'free':
+          World.Properties += WORLD_FREE;
+        '500 skill total', '750 skill total', '1000 skill total', '1250 skill total', '1500 skill total', '1750 skill total', '2000 skill total':
+          World.Properties += WORLD_SKILL;
+        'deadman':
+          World.Properties += WORLD_DEADMAN;
+        'pvp world - high risk', 'pvp world', 'pvp world - free':
+          World.Properties += WORLD_PVP;
+        'united states':
+          World.Properties += WORLD_USA;
+        'germany':
+          World.Properties += WORLD_GERMANY;
+        'united kingdom':
+          World.Properties += WORLD_UK;
+        'australia':
+          World.Properties += WORLD_AUSTRALIA;
+      end;
+
+    Self += World;
+  end;
+
+  if (Length(Self) = 0) then
+    srl.WriteLn('Failed to load worlds', dtFatal);
+end;
+
+procedure TRSWorldSwitcher.Setup();
+begin
+  with Self do
+  begin
+    SetName('World switcher');
+    SetStatic(True);
+    SetBounds(srl.DefaultClientBounds);
+  end;
+end;
+
+function TRSWorldSwitcher.IsOpen(WaitTime: Integer = 0): Boolean;
+var
+  T: UInt64;
+begin
+  T := GetTickCount() + WaitTime;
+
+  repeat
+    if srl.IsClientState(csWorldSwitcher) then
+      Exit(True);
+
+    if (WaitTime > 0) then
+      Wait(50, 100);
+  until (GetTickCount() >= T);
+end;
+
+function TRSWorldSwitcher.FixWorld(wo: Integer): Integer;
+var
+  w: String;
+begin
+  w := IntToStr(wo);
+  if (Length(w) = 3) then
+    w := Copy(w, 2, Length(w));
+
+  if (w[1] = '0') then
+    w := Copy(w, 2, Length(w));
+
+  Result := StrToInt(w);
+end;
+
+function TRSWorldSwitcher.SelectWorld(wo: Integer): Boolean;
+var
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+  i: Integer;
+  B: TBox;
+  P: TPoint;
+begin
+  Result := False;
+  if (not FindColors(TPA, clBlack, Self.GetBounds())) then
+    Exit;
+
+  srl.Writeln('WorldSwitcher.SelectWorld: Searching for world ' + toString(wo));
+
+  { Pretty much get everything black, remove the biggest (the background)
+    and then a simple cluster so we have text }
+  ATPA := FloodFillTPA(TPA);
+  SortATPASize(ATPA, True);
+  TPA := MergeATPA(Copy(ATPA, 1, Length(ATPA) - 1));
+  ATPA := ClusterTPAEx(TPA, 5, 1);
+
+  for i := 0 to High(ATPA) do
+  begin
+    B := GetTPABounds(ATPA[i]);
+
+    if srl.FindText(P, toString(wo), 'UpChars07_s', clBlack, 0, B) then
+    begin
+      B := B.Expand(-2, 3); { Adjust the bounds so it's the whole button }
+      B.X2 += 60;
+      Mouse.Click(B, mouse_Left);
+      Wait(Random(200, 500));
+      Exit(srl.WriteLn('World succesfully selected', True));
+    end;
+  end;
+
+  srl.Writeln('World not found');
+end;
+
+procedure TRSWorldSwitcher.Close;
+begin
+  Mouse.Click(srl.RandomPoint(Point(734, 12), 5), mouse_Left);
+  Wait(Random(500, 1000));
+end;
+
+(*
+WorldSwitcher.GetWorld
+~~~~~~~~~~~~~~~~~~~~~~
+
+  function TRSWorldSwitcher.GetWorld(Filter: TRSWorldFilter): Int32; overload;
+
+Selects a random world which isn't a filter world and has no filter properties.
+
+Example:
+.. code-block:: pascal
+
+  // Returns a random world that isn't world 302 and isn't a free world.
+  World := WorldSwitcher.GetWorld([[WORLD_FREE], [302]]);
+*)
+function TRSWorldSwitcher.GetWorld(Filter: TRSWorldFilter): Int32; overload;
+var
+  World: TRSWorld;
+  Filtered: TRSWorldArray;
+  Prop: ERSWorldProperty;
+  i: Int32;
+label
+  Rejected;
+begin
+  if (Length(Self.Worlds) = 0) then
+    Self.Worlds.Load();
+
+  for World in Self.Worlds do
+  begin
+    for i := 0 to High(Filter.Worlds) do
+      if (Self.FixWorld(World.ID) = Self.FixWorld(Filter.Worlds[i])) then
+        goto Rejected;
+    for Prop := Low(ERSWorldProperty) to High(ERSWorldProperty) do
+       if (Prop in World.Properties) and (Prop in Filter.Properties) then
+         goto Rejected;
+
+    Filtered += World;
+
+    Rejected:
+  end;
+
+  if (Length(Filtered) = 0) then
+    srl.WriteLn('All worlds have been filtered', dtFatal);
+
+  Result := Filtered[Random(Length(Filtered))].ID;
+end;
+
+begin
+  WorldSwitcher.Setup();
+end;
+
+

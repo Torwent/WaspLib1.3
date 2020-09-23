@@ -1,0 +1,23 @@
+type
+  TOSRSSmart = record(TSmartBase)
+    World: Int32; // not used anymore.
+    {$IFDEF CODEINSIGHT}Image:TMufasaBitmap;{$ENDIF}
+  end;
+
+function TOSRSSmart.SetSpawnParameters(var Params: TSmartParameters): Boolean;
+begin
+  Params.Root := 'http://oldschool2a.runescape.com/';
+  Params.Param := #0;
+
+  Exit(True);
+end;
+
+var
+  Smart: TOSRSSmart;
+
+begin
+  Smart.Width := 765;
+  Smart.Height := 503;
+  Smart.OnSpawn := @Smart.SetSpawnParameters;
+end;
+

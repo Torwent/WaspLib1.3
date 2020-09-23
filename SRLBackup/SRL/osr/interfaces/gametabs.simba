@@ -1,0 +1,271 @@
+(*
+Gametabs
+==========
+Gametabs is the core of every tab, like inventory, stats, and so on.
+This is also the file that includes every tab's code.
+
+.. code-block:: pascal
+
+   type EGametab = (
+     tabCombat,
+     tabStats,
+     tabQuests,
+     tabInventory,
+     tabEquipment,
+     tabPrayer,
+     tabMagic,
+     tabClan,
+     tabFriends,
+     tabIgnores,
+     tabLogout,
+     tabOptions,
+     tabEmotes,
+     tabMusic
+   );
+   
+   type TRSGametab = record
+     Tabs: TBoxArray;
+     Keybindings: TIntegerArray;
+     FKeysEnabled: Boolean;
+   end;
+*)
+type
+  EGametab = (
+    tabCombat,
+    tabStats,
+    tabQuests,
+    tabInventory,
+    tabEquipment,
+    tabPrayer,
+    tabMagic,
+    tabClan,
+    tabFriends,
+    tabIgnores,
+    tabLogout,
+    tabOptions,
+    tabEmotes,
+    tabMusic
+  );
+
+  TRSGametab = record
+    FBounds: TBox;
+    Tabs: TBoxArray;
+    UpperTabs, LowerTabs: TBox;
+    Keybindings: TIntegerArray;
+    FKeysEnabled: Boolean;
+  end;
+
+
+  TGtButton = record
+    StateEnabled: UInt32;
+    StateDisabled: UInt32;
+    Bounds: TBox;
+  end;
+
+(*
+var Gametabs
+~~~~~~~~~~~~
+Variable that stores functions and properties relating to gametabs.
+*)
+var
+  Gametabs: TRSGametab;
+
+procedure TRSGametab.__Setup();
+begin
+  with Self do
+  begin
+    UpperTabs := [527,168,760,204];
+    LowerTabs := [527,466,760,502];
+    FBounds := LowerTabs + UpperTabs;
+
+    Tabs := UpperTabs.Partition(1, 7, -3);
+    Tabs.Extend(LowerTabs.Partition(1, 7, -3));
+
+    Keybindings := [VK_F1, VK_F2, VK_F3, VK_ESCAPE, VK_F4, VK_F5, VK_F6, VK_F7,
+                    VK_F8, VK_F9, 0, VK_F10, VK_F11, VK_F12];
+  end;
+end;
+
+(*
+Gametab.ToggleFKeys
+~~~~~~~~~~~~~~~~~~~
+.. pascal:: procedure TRSGametab.ToggleFKeys(const Enable: Boolean);
+
+Enables support for FKeys to open tabs.
+*)
+procedure TRSGametab.ToggleFKeys(const Enable: Boolean);
+begin
+  Self.FKeysEnabled := Enable;
+end;
+
+(*
+Gametab.GetBounds
+~~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSGametab.GetBounds(Tab: EGametab): TBox;
+
+Returns the bounds of the tab-button
+*)
+function TRSGametab.GetBounds(Tab: EGametab): TBox;
+begin
+  Result := Self.Tabs[Ord(Tab)];
+end;
+
+(*
+Gametab.PointToSlot
+~~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSGametab.PointToSlot(pt: TPoint): Int32;
+
+Returns the tab-id under the location ``pt``, value is returned as
+an integer, as it will return ``-1`` if it fails. To convert it to a 
+gametab is just a matter of casting it like ``EGameTab(theValue)``
+*)
+function TRSGametab.PointToSlot(pt: TPoint): Int32;
+begin
+  for Result:=0 to High(Self.Tabs) do
+    if Self.Tabs[Result].Contains(pt) then
+      Exit(Result);
+  Result := -1;
+end;
+
+(*
+Gametab.IsOpen
+~~~~~~~~~~~~~~~
+.. pascal:: function TRSGametab.IsOpen(Tab:EGametab; MaxWait:Int32=0): Boolean;
+
+Checks if the given tab is open or now. By default it wont wait (expecting it to open).
+*)
+function TRSGametab.IsOpen(Tab:EGametab; MaxWait:Int32=0): Boolean;
+var
+  FoundTab:Boolean;
+  i,t:Int64;
+begin
+  t := GetTickCount64() + MaxWait;
+  repeat
+    if CountColorTolerance(1910383, self.GetBounds(Tab), 13) > 0 then
+      Exit(True)
+    else if (Tab = tabInventory) then //when in bank or shop no tabs exist
+    begin
+      FoundTab := False;
+      for i:=0 to High(Self.Tabs) do
+        if (CountColorTolerance(1910383, Self.Tabs[i], 13) > 0) then
+        begin
+          FoundTab := True;
+          break;
+        end;
+      if not FoundTab then
+        Exit(True);
+    end;
+    Wait(Random(50,90));
+  until GetTickCount64() > t;
+end;
+
+(*
+Gametab.Open
+~~~~~~~~~~~~~~~
+.. pascal:: function TRSGametab.Open(Tab: EGametab; Tries: Int32=2): Boolean;
+
+Opens the given gametab, by default it retries twice.
+*)
+function TRSGametab.Open(Tab: EGametab; Tries: Int32=2): Boolean;
+var
+  i:Int32;
+  B:TBox;
+begin
+  B := self.GetBounds(Tab);
+  if Self.IsOpen(Tab) then
+    Exit(True);
+
+  for i:=1 to Tries do
+  begin
+    if (Self.FKeysEnabled and (Keybindings[Ord(tab)] <> 0)) then
+    begin
+      Keyboard.PressKey(Keybindings[Ord(tab)]);
+      if self.IsOpen(Tab, Random(1500,2500)) then
+        Exit(True);
+      Self.ToggleFKeys(False);
+    end;
+    
+    Mouse.Click(B, mouse_Left, False, rndSkewed);
+    if self.IsOpen(Tab, Random(1500,2500)) then
+      Exit(True);
+  end;
+end;
+
+(*
+Gametab.Open
+~~~~~~~~~~~~~~~
+.. pascal:: procedure TRSGametab.Hover(Tab:EGametab; Condition:Boolean=True);
+
+Only moves the mouse over the given tab.
+*)
+procedure TRSGametab.Hover(Tab: EGametab; Condition: Boolean=True);
+begin
+  if Condition then
+    Mouse.Move(self.GetBounds(Tab));
+end;
+
+(*
+Gametab.GetCurrent
+~~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSGametab.GetCurrent(): EGametab;
+
+Returns the current open tab.
+*)
+function TRSGametab.GetCurrent(): EGametab;
+var i:Int32;
+begin
+  for i:=0 to Ord(High(EGameTab)) do
+    if Self.IsOpen(EGameTab(i)) then
+      Exit(EGameTab(i));
+end;
+
+
+//----------------
+
+procedure TGtButton.Init(B:TBox; enaColor:Int32=1777019; disColor:Int32=5067346);
+begin
+  self.StateEnabled := enaColor;
+  self.StateDisabled := disColor;
+  self.Bounds := B;
+end;
+
+
+function GtButton(B:TBox; enaColor:Int32=1777019; disColor:Int32=5067346): TGtButton;
+begin
+  Result.Init(B,enaColor,disColor);
+end;
+
+
+//Checks if the given button (by bounds) is red/enabled
+function TGtButton.IsEnabled(): Boolean; constref;
+begin
+  Result := CountColorTolerance(self.stateEnabled, self.bounds, 30) > 70;
+end;
+
+//helper: Clicks the given button and returns True if it didn't fail
+function TGtButton.Toggle(out enabled:Boolean; tryTime:Int32=2000): Boolean; constref;
+var t:UInt64;
+begin
+  enabled := not(Self.IsEnabled());
+  Mouse.Click(self.bounds, mouse_left);
+  t := GetTickCount64()+tryTime;
+  repeat
+    Result := Self.IsEnabled() = enabled;
+    if not(Result) then Wait(25);
+  until (GetTickCount64() > t) or Result;
+end;
+
+
+begin
+  Gametabs.__Setup();
+end;
+
+{$include_once gametabs/combat.simba}
+{$include_once gametabs/stats.simba}
+{$include_once gametabs/inventory.simba}
+{$include_once gametabs/equipment.simba}
+{$include_once gametabs/prayer.simba}
+{$include_once gametabs/spells.simba}
+
+{$include_once gametabs/logout.simba}
+{$include_once gametabs/options.simba}

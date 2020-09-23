@@ -1,0 +1,275 @@
+type
+  TWasp = record
+    Antiban: TAntiban;
+    StatsDebugTick: Int64;
+    Action: String;
+  end;
+
+  TFastBankLocation = (CraftGuildLoc, CastleWarsLoc, EdgevilleLoc, GEBankLoc, UnknownLoc);
+
+
+var
+  Wasp: TWasp;
+  CraftCapeDTM := DTMFromString('mggAAAHicY2NgYJjCxMAwA4inAXE/EM8C4qlA/Bgo9wqI3wHxeyC+B8SfgVhUUJAhxEGPIT3ACshjRMLkAAAg3Qr7');
+  DuelRingDTM := DTMFromString('mggAAAHicY2NgYNjJxMCwHYh3APEBIN4ExAeBuIGRgaEDiLuAuBWIW4C4FojvHpQCYwYGRjgW7BNlIA8AAE1QC7M=');
+  CloseButtonDTM := DTMFromString('mwQAAAHic42RgYHjGyMDwCIhfAfFDIH4JxG+B+A4UfwBicaA6ISiWBmIZIFYEYnkg5oViBgZGIjCVAQDySQj5');
+
+  WaspRSW: TRSWalker;
+
+  CraftGuild := Point(3554, 3328);
+  CastleWars := Point(1562, 4081);
+  Edgeville := Point(4157, 2465);
+  GEBank1 := Point(4466, 2532);
+  GEBank2 := Point(4466, 2532);
+
+function Wasp.HasItem(DTM: Integer; Equippable: Boolean = True; MouseMove: Boolean = True): Boolean;
+var
+  InvCheck, EquipCheck: Boolean = False;
+  i: Int32;
+begin
+  Result := False;
+  EquipCheck := not Equippable; //Quick way to skip checking the equipment if
+                                //the item is not equippable.
+  for i := 0 to 1 do
+  begin
+    if ((not InvCheck) and (not EquipCheck) and
+    (not Inventory.IsOpen()) and (not Equipment.IsOpen())) then begin
+      if (Random(0, 1) = 0) then
+        Inventory.Open()
+      else
+        Equipment.Open();
+    end else if (InvCheck and (not EquipCheck)) then
+      Equipment.Open()
+    else if (EquipCheck and (not InvCheck)) then
+      Inventory.Open();
+
+    if Inventory.IsOpen() then begin
+      if Inventory.FindDTM(DTM) then
+      begin
+        if MouseMove then
+          Inventory.MouseSlot(Inventory.FindDTM(DTM)[0]);
+        Exit(True);
+      end;
+      InvCheck := True;
+    end else if Equipment.IsOpen() then begin
+      if Equipment.FindDTM(DTM) then
+      begin
+        if MouseMove then
+          Equipment.MouseSlot(Equipment.FindDTM(DTM)[0]);
+        Exit(True);
+      end;
+      EquipCheck := True;
+    end;
+  end;
+end;
+
+function Wasp.GotTeleported(WaitTime: UInt32 = 2400): Boolean;
+var
+  t: UInt64;
+  StartPos: TPoint;
+begin
+  t := GetTickCount() + WaitTime;
+  StartPos := WaspRSW.GetMyPos();
+  Result := False;
+  Wait(WaitTime);
+  repeat
+    if (WaspRSW.GetMyPos.DistanceTo(StartPos) > 25) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+function Wasp.GetClosestFastBank(): TFastBankLocation;
+begin
+  if (WaspRSW.GetMyPos.DistanceTo(CraftGuild) <= 35) then
+    Exit(CraftGuildLoc)
+  else if (WaspRSW.GetMyPos.DistanceTo(CastleWars) <= 35) then
+    Exit(CastleWarsLoc)
+  else if (WaspRSW.GetMyPos.DistanceTo(Edgeville) <= 35) then
+    Exit(EdgevilleLoc)
+  else if (WaspRSW.GetMyPos.DistanceTo(GEBank1) <= 35) then
+    Exit(GEBankLoc)
+  else
+    Exit(UnknownLoc);
+end;
+
+function Wasp.AtToFastBank(): Boolean;
+begin
+  if Self.GetClosestFastBank() = UnknownLoc then
+    Exit(False)
+  else
+    Exit(True);
+end;
+
+function Wasp.WalkToFastBank(): Boolean;
+var
+  FastBank: TFastBankLocation;
+  BankTile: TPoint;
+begin
+  FastBank := Self.GetClosestFastBank();
+
+  case FastBank of
+    CraftGuildLoc: BankTile := CraftGuild;
+    CastleWarsLoc: BankTile := CastleWars;
+    EdgevilleLoc: BankTile := Edgeville;
+    GEBankLoc: BankTile := GEBank1;
+    UnknownLoc: Exit(False);
+  end;
+
+
+  if Self.IsTileVisible(BankTile) then
+    Exit(True)
+  else
+  begin
+    if WaspRSW.WalkPath([BankTile], 3) and Self.IsTileVisible(BankTile) then
+      Exit(True)
+    else
+      Exit(False);
+  end;
+end;
+
+function Wasp.FastBankTeleport(): Boolean;
+begin
+  if not AtToFastBank() then
+  begin
+    if not Self.HasItem(CraftCapeDTM) then
+    begin
+      if not Self.HasItem(DuelRingDTM) then
+        Exit(False);
+    end;
+
+    if ChooseOption.Open() then
+    begin
+      if ChooseOption.Select(['Teleport', 'Castle', 'Wars']) then
+      begin
+        if Self.GotTeleported() then
+          Exit(True)
+        else
+          Exit(False);
+      end
+      else if ChooseOption.Select(['Rub']) then
+      begin
+        if Chatbox.WaitQuery('Castle', 2000) then
+          Chatbox.ClickOption(['Castle'], [clBlack])
+        else
+          Exit(False);
+      end;
+    end;
+  end;
+
+  if not Wasp.WalkToFastBank() then
+    Exit(False);
+
+
+end;
+
+function Wasp.AtLocation(Tile: TPoint; Distance: Int32 = 15): Boolean;
+begin
+  Result := (WaspRSW.GetMyPos.DistanceTo(Tile) <= Distance);
+end;
+
+function Wasp.AtLocation(Tiles: TPointArray; Distance: Int32 = 15): Boolean; overload;
+var
+  i: Int32;
+begin
+  Result := False
+
+  for i := 0 to (Length(Tiles) - 1) do
+  begin
+    if (WaspRSW.GetMyPos.DistanceTo(Tiles[i]) <= Distance) then
+      Exit(True);
+  end;
+end;
+
+function Wasp.IsTileVisible(Tile: TPoint; Map: TRSWalker = WaspRSW): Boolean;
+begin
+  Result := Mainscreen.FBounds.Contains(Map.GetTileMS(Tile));
+end;
+
+function Wasp.AnyTileVisible(Tiles: TPointArray; Map: TRSWalker = WaspRSW): Boolean;
+var
+  i: Int32;
+begin
+  Result := False;
+  for i := 0 to (Length(Tiles) - 1) do
+  begin
+    if Wasp.IsTileVisible(Tiles[i], Map) then
+      Exit(True);
+  end;
+end;
+
+function Wasp.IsInterfaceOpen(): Boolean;
+var
+  x, y: Integer;
+begin
+  Result := FindDTM(CloseButtonDTM, x, y, 420, 3, 515, 100) or PinScreen.IsOpen();
+end;
+
+function Wasp.CloseInterface(): Boolean;
+begin
+  Result := False;
+  if not Self.IsInterfaceOpen() then
+    Exit(True);
+
+  if BankScreen.IsOpen() then
+    Result := BankScreen.Close()
+  else if PinScreen.IsOpen() then
+  begin
+    PinScreen.EnterPin();
+    Result := BankScreen.Close();
+  end
+  else if SmithingScreen.IsOpen2() then
+    Result := SmithingScreen.Close()
+  else if ShopScreen.IsOpen() then
+    Result := ShopScreen.Close();
+end;
+
+procedure Wasp.DebugMSTiles(Map: TRSWalker; Tiles: TPointArray);
+var
+  BMP, i, c: Integer;
+  TileBox: TBox;
+begin
+  BMP := BitmapFromClient(GetClientBounds());
+  c := 255;
+
+  for i:=0 to High(Tiles) do
+  begin
+    TileBox := Map.GetTileMS(Tiles[i]).Bounds();
+    DrawTPABitmap(BMP, EdgeFromBox(TileBox), c);
+    c := i + ((c * 128) and $FFFFFF);
+    WriteLn(c);
+  end;
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+procedure Wasp.DebugPlayerBox();
+var
+  BMP: Integer;
+begin
+  BMP := BitmapFromClient(GetClientBounds());
+  DrawTPABitmap(BMP, EdgeFromBox(MainScreen.GetPlayerBox()), 255);
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+
+procedure Wasp.LoadMapSlices(Map: String; Slices: TPointArray);
+begin
+   WaspRSW.Free();
+   WaspRSW.InitEx(Map, Slices);
+end;
+
+
+procedure Wasp.Free();
+begin
+  WaspRSW.Free();
+  FreeDTMs([CraftCapeDTM, DuelRingDTM, CloseButtonDTM]);
+end;
+
+begin
+  WaspRSW.Init('world.png');
+  AddOnTerminate(@Wasp.Free);
+end;

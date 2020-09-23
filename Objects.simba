@@ -1,0 +1,141 @@
+type
+  TMSObject = record
+    WorldLoc: TPointArray;  //loctions on the world map
+    Color: TCTS2Color;      //must have color
+    MinCount: Int32;        //size of TPA
+    SplitDist: Int32;
+  end;
+
+var
+  Obj: TMSObject;
+
+function TMSObject.Find(DoSort: Boolean=True; Expand:Int32=0; Map: TRSWalker = WaspRSW): TRectArray;
+var
+  loc, me: TPoint;
+  rect: TRectangle;
+  locations, TPA: TPointArray;
+  ATPA: T2DPointArray;
+begin
+  me := Map.GetMyPos();
+  locations := Copy(Self.WorldLoc);
+  if DoSort then Locations.Sorted(me);
+
+  for loc in Locations do
+  begin
+    rect := Map.GetTileMSEx(me, loc, 1).Expand(Expand);
+    if MainScreen.GetBounds.Contains(rect.Bounds) then
+    begin
+      if (srl.FindColors(TPA, Color, rect.Bounds) < Self.MinCount) then
+        Continue;
+
+      if (Self.SplitDist > 0) then
+      begin
+        TPA  := rect.Filter(TPA);
+        ATPA := TPA.Cluster(Self.SplitDist);
+        ATPA.SortByMiddle(rect.Mean);
+        if ATPA then
+          Result += ATPA[0].MinAreaRect;
+      end else
+        Result += rect.Expand(-Expand);
+    end;
+  end;
+end;
+
+function TMSObject.Click(Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean=True): Boolean;
+var
+  Rectangles: array of TRectangle;
+  Rectangle: TRectangle;
+  i: Int32;
+  t: UInt64;
+begin
+
+  Result := False;
+
+  if not Wasp.IsTileVisible(Tile) then
+    Exit(False);
+
+  for i := 1 to Attempts do
+  begin
+    Obj := [[Tile], Color, 200, 8];
+
+    t := GetTickCount() + 3000;
+    repeat
+      Rectangles := obj.Find(DoSort, 2, Map);
+      if (GetTickCount() >= t) then
+        Exit(False);
+    until Rectangles;
+
+    Rectangle := Rectangles[Random(0, (Length(Rectangles)-1))];
+
+    mouse.Move(SRL.RandomPoint(Rectangle));
+
+    if MainScreen.IsUpText(SubStrs) then
+    begin
+      if mouse.Click(ctRed) then
+      begin
+        if not HasInterface then
+          Exit(True);
+
+        t := GetTickCount() + Random(600, 1200);
+        repeat
+          if Wasp.IsInterfaceOpen() then
+            Exit(True)
+          else
+            Wait(Random(25, 50));
+        until (GetTickCount() >= t);
+      end;
+    end;
+
+    Minimap.RandomCompass(-180,180);
+  end;
+end;
+
+function TMSObject.Click(Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean=True): Boolean; overload;
+var
+  Rectangles: array of TRectangle;
+  Rectangle: TRectangle;
+  i: Int32;
+  t: UInt64;
+begin
+
+  Result := False;
+
+  if not Wasp.AnyTileVisible(Tiles, Map) then
+    Exit(False);
+
+  for i := 1 to Attempts do
+  begin
+    Obj := [Tiles, Color, 200, 8];
+
+    t := GetTickCount() + 3000;
+    repeat
+      Rectangles := obj.Find(DoSort, 2, Map);
+      if (GetTickCount() >= t) then
+        Exit(False);
+    until Rectangles;
+
+    Rectangle := Rectangles[Random(0, (Length(Rectangles)-1))];
+
+    mouse.Move(SRL.RandomPoint(Rectangle));
+
+    if MainScreen.IsUpText(SubStrs) then
+    begin
+      if mouse.Click(ctRed) then
+      begin
+        if not HasInterface then
+          Exit(True);
+
+        t := GetTickCount() + 4000;
+        repeat
+          if Wasp.IsInterfaceOpen() then
+            Exit(True)
+          else
+            Wait(Random(25, 50));
+        until (GetTickCount() >= t);
+      end;
+    end;
+
+    Minimap.RandomCompass(-180,180);
+  end;
+end;
+

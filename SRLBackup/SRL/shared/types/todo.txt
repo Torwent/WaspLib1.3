@@ -1,0 +1,5 @@
+Notes:
+1. (July 2016) We should get all functions documented, even a very simple documentation does the trick
+   Just so that people have something to refer to.
+   
+   Currently docs are not hosted anywhere, but we'll get there.  

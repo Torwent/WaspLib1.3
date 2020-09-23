@@ -1,0 +1,110 @@
+type
+  ESRLOption = (soDebug, soDebugAntiban, soDebugTimeStamp, soActivateClient);
+  ESRLOptionSet = set of ESRLOption;
+
+  EDebugType = (dtHeader, dtFooter, dtFatal, dtNone);
+
+const
+  SRL_DEFAULT_OPTIONS = [soDebug, soDebugAntiban, soDebugTimeStamp];
+
+type
+  TSRL = record
+    Options: ESRLOptionSet;
+    DebugLevel: Int32;
+    StartTime: UInt64;
+    DefaultClientBounds: TBox;
+
+    OnSetup: procedure;
+    OnLoginPlayer: procedure();
+    OnLoginResponse: function(Response: String): Boolean;
+    OnFatalMessage: procedure(Message: String);
+    CloseInterfacesWithEscape: Boolean;
+
+    GAUSS_CUTOFF: Double;
+  end;
+
+var
+  srl: TSRL;
+
+procedure TSRL.WriteLn(constref Message: String; DebugType: EDebugType = dtNone); overload;
+
+  function TimeRunning: String;
+  const
+    HOURS_PER_DAY = 24;
+    HOURS_PER_WEEK = 168;
+  var
+    Year, Month, Week, Day, Hour, Minute, Second: Int32;
+  begin
+    ConvertTime64(GetTickCount() - Self.StartTime, Year, Month, Week, Day, Hour, Minute, Second);
+
+    Result := Format('[%.2d:%.2d:%.2d]', [Hour + (Day * HOURS_PER_DAY) + (Week * HOURS_PER_WEEK), Minute, Second]);
+  end;
+
+var
+  Prefix: String;
+begin
+  if (soDebug in Options) or (DebugType = dtFatal) then // Allow fatal messages to passthrough
+  begin
+    if (soDebugTimeStamp in Options) then
+      Prefix := TimeRunning() + ':';
+
+    case DebugType of
+      dtFatal:
+        Prefix += '[FATAL]:';
+      dtFooter:
+        Self.DebugLevel -= 1;
+    end;
+
+    System.WriteLn(Format('%s %s%s', [Prefix, '-' * Self.DebugLevel, Message]));
+
+    case DebugType of
+      dtHeader:
+        Self.DebugLevel += 1;
+      dtFatal:
+        begin
+          if (@Self.OnFatalMessage <> nil) then
+            Self.OnFatalMessage(Message);
+
+          TerminateScript();
+        end;
+    end;
+  end;
+end;
+
+function TSRL.WriteLn(constref Message: String; AResult: Variant; Footer: String = ''): Variant; overload;
+begin
+  Result := AResult;
+  Self.WriteLn(Message);
+  if (Footer <> '') then
+    Self.WriteLn(Footer, dtFooter);
+end;
+
+procedure TSRL.WriteFmt(constref Message: String; Args: TVariantArray; DebugType: EDebugType = dtNone);
+begin
+  Self.WriteLn(Format(Message, Args), debugType);
+end;
+
+procedure TSRL.ToggleCloseInterfacesWithEscape(Enable: Boolean);
+begin
+  Self.CloseInterfacesWithEscape := Enable;
+end;
+
+procedure TSRL.Setup(AOptions: ESRLOptionSet = SRL_DEFAULT_OPTIONS);
+begin
+  if (@Self.OnSetup <> nil) then
+    Self.OnSetup();
+
+  Self.Options := AOptions;
+  if (Self.StartTime = 0) then
+    Self.StartTime := GetTickCount();
+end;
+
+begin
+  srl.DebugLevel := 0;
+  srl.StartTime := GetTickCount();
+  srl.Options := SRL_DEFAULT_OPTIONS;
+  srl.GAUSS_CUTOFF := 4.0;
+end;
+
+
+

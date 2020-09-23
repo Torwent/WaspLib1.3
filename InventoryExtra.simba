@@ -1,0 +1,129 @@
+const
+  DROP_PATTERN_TWO_ROW: TIntegerArray = [0,4,1,5,2,6,3,7,8,12,9,13,10,14,11,15,16,20,17,21,18,22,19,23,20,24,25,26,27,28];
+  DROP_PATTERN_TWO_ROW_R: TIntegerArray = [0,4,1,5,2,6,3,7,11,15,10,14,9,13,8,12,16,20,17,21,18,22,19,23,20,24,28,27,26,25];
+
+
+function TRSInventory.GetEmptySlots(): TIntArray;
+var
+  i: Int32;
+begin
+  for i := 0 to 27 do
+    if not Self.IsSlotUsed(i) then
+      Result += i;
+end;
+
+function TRSInventory.DragSlotToSlot(Slot1, Slot2: Int32): Boolean;
+begin
+  if not Self.IsSlotValid(Slot1) or not Self.IsSlotValid(Slot2) then
+    Exit(False);
+
+  if not Self.IsSlotUsed(Slot1) then
+    Exit(False);
+
+  Self.MouseSlot(Slot1);
+  Mouse.DragTo(SRL.RandomPoint(Self.GetSlotBox(Slot2)));
+
+  Result := True;
+end;
+
+
+// Gets the amount of the item in the specified slot.
+// Nice and easy to get stackable item amounts from the inventory.
+function TRSInventory.SlotAmount(Slot: Int32): Int32;
+begin
+  Result := SRL.GetItemAmount(Self.GetSlotBox(Slot));
+end;
+
+// Same as above but uses DTM which will probably most cases.
+function TRSInventory.DTMAmount(DTM: Integer): Int32;
+begin
+  Result := Self.SlotAmount(Self.FindDTM(DTM)[0]);
+end;
+
+// Returns true only if it has all DTMs in the inventory
+function TRSInventory.Contains(DTMs: TIntArray): Boolean; overload;
+var
+  i: Int32;
+begin
+  Result := True;
+  for i:=0 to High(DTMs) do
+  begin
+    if not Self.Contains(DTMs[i]) then
+    begin
+      Result := False;
+      Break;
+    end;
+  end;
+end;
+
+// Gets the slots of the 2 closest different items in the inventory you pass as
+// a DTM... Would like to add a away to do this with 2 items that are the same.
+function TRSInventory.ClosestDTMs(DTM1, DTM2: Integer): TIntArray;
+var
+  i1, i2, LoopResult, CurrentDistance: Int32;
+  SlotsArray1, SlotsArray2, ClosestSlots: TIntArray;
+  ClosestSlotsArray: Array of TIntArray;
+begin
+  SlotsArray1 := Self.FindDTM(DTM1);
+  SlotsArray2 := Self.FindDTM(DTM2);
+  CurrentDistance := 500;
+
+  for i1 := 0 to High(SlotsArray1) do
+  begin
+    for i2 := 0 to High(SlotsArray2) do
+    begin
+
+      LoopResult := Distance(Self.GetSlotBox(SlotsArray1[i1]).Middle, Self.GetSlotBox(SlotsArray2[i2]).Middle);
+      if LoopResult <= CurrentDistance then
+      begin
+        if LoopResult < CurrentDistance then
+          ClosestSlotsArray := [];
+        CurrentDistance := LoopResult;
+        ClosestSlots := [SlotsArray1[i1], SlotsArray2[i2]];
+        ClosestSlotsArray += ClosestSlots;
+      end;
+
+    end;
+  end;
+  if ClosestSlotsArray then
+    Result := ClosestSlotsArray[Random(0, High(ClosestSlotsArray))];
+end;
+
+// Uses item in Slo1 with the item in Slot2.
+function TRSInventory.CombineItems(Slot1, Slot2: Int32): Boolean;
+var
+  t: UInt64;
+begin
+  if ((not Self.IsSlotUsed(Slot1)) or (not Self.IsSlotUsed(Slot2))) then
+    Exit(False);
+
+  Self.MouseSlot(Slot1, mouse_Move);
+
+  if MainScreen.IsUpText(['Use']) then
+    Mouse.Click(mouse_Left)
+  else
+  begin
+    if ChooseOption.Open() then
+      ChooseOption.Select(['Use']);
+  end;
+
+  t := GetTickCount() + Random(200, 400);
+  while (t > GetTickCount()) do
+  begin
+    if (Self.GetActiveSlot() >= 0) then
+      Break;
+  end;
+
+  if Self.GetActiveSlot() <> Slot1 then
+    Exit(False);
+  Self.MouseSlot(Slot2, mouse_Left);
+end;
+
+// Uses 2 items together that were specified as DTMs
+function TRSInventory.CombineDTMs(DTM1, DTM2: Integer): Boolean;
+var
+  ClosestSlots: TIntArray;
+begin
+  ClosestSlots := Self.ClosestDTMs(DTM1, DTM2);
+  Result := Self.CombineItems(ClosestSlots[0], ClosestSlots[1]);
+end;

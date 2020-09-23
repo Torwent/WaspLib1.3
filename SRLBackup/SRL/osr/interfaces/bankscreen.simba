@@ -1,0 +1,845 @@
+(*
+BankScreen
+==========
+This file stores all methods that are used in the bankscreen-iterface.
+All methods here are called with the bankscreen ``BankScreen`` variable.
+
+* To open the grand exchange use `GrandExchange.OpenBank()` from grandexch.simba.
+  (GE isn't referenced in this file to keep the include clean of fowarding)
+
+.. code-block:: pascal
+
+    Writeln(BankScreen.IsOpen());
+
+*)
+
+type
+  EBankButton = (BANK_BUTTON_REARRANGE_SWAP, BANK_BUTTON_REARRANGE_INSERT,
+                 BANK_BUTTON_WITHDRAW_ITEM, BANK_BUTTON_WITHDRAW_NOTE,
+                 BANK_BUTTON_QUANTITY_ONE, BANK_BUTTON_QUANTITY_FIVE, BANK_BUTTON_QUANTITY_TEN, BANK_BUTTON_QUANTITY_X, BANK_BUTTON_QUANTITY_ALL,
+                 BANK_BUTTON_PLACEHOLDER, BANK_BUTTON_SEARCH, BANK_BUTTON_DEPOSIT_INVENTORY, BANK_BUTTON_DEPOSIT_WORN,
+                 BANK_BUTTON_CLOSE);
+
+  EBankLocation = (blYanille, blAlKharid, blLumbridge, blDrynor, blEdgeville,
+                   blVarrockWest, blVarrockEast,
+                   blFaladorEast, blFaladorWest);
+
+  EBankerColor = (bcBlue, bcGray);
+
+  TRSBankScreen = record(TInterfaceBase)
+    FSlots: TBoxArray;
+    FButtons: array [EBankButton] of TBox;
+  end;
+
+  TRSPinScreen = record (TInterfaceBase)
+    FSlots: TBoxArray;
+  end;
+
+
+var
+  BankScreen: TRSBankScreen;
+  PinScreen: TRSPinScreen;
+
+
+const
+   WITHDRAW_ALL = -1;
+   WITHDRAW_ALL_BUT_ONE = -2;
+   // Correct the misspelling in EBankLocation above, while maintaining compatibility
+   blDraynor = blDrynor;
+
+   // backwards compatibility, will be removed eventually.
+   bbItem = BANK_BUTTON_WITHDRAW_ITEM;
+   bbNote = BANK_BUTTON_WITHDRAW_NOTE;
+
+procedure TRSBankScreen.__Setup();
+
+  procedure SetButtonBounds(Button: EBankButton; X, Y, Width, Height: Int32);
+  begin
+    FButtons[Button] := [X, Y, X + Width, Y + Height];
+  end;
+
+var
+  SlotBounds: TBox = [73, 83, 456, 298];
+begin
+  with Self do
+  begin
+    SetBounds(Box(16, 6, 503, 336));
+    SetName('Bankscreen');
+    SetStatic(True);
+
+    FSlots := SlotBounds.Partition(6, 8);
+    FSlots.ModifySide('x2', -16);
+    FSlots.ModifySide('y2', -4);
+
+    with Self.GetBounds() do
+    begin
+      SetButtonBounds(BANK_BUTTON_REARRANGE_SWAP,   X1 + 5,  Y2 - 26, 49, 21);
+      SetButtonBounds(BANK_BUTTON_REARRANGE_INSERT, X1 + 55, Y2 - 26, 49, 21);
+
+      SetButtonBounds(BANK_BUTTON_WITHDRAW_ITEM, X1 + 105, Y2 - 26, 49, 21);
+      SetButtonBounds(BANK_BUTTON_WITHDRAW_NOTE, X1 + 155, Y2 - 26, 49, 21);
+
+      SetButtonBounds(BANK_BUTTON_QUANTITY_ONE,  X1 + 205, Y2 - 26, 24, 21);
+      SetButtonBounds(BANK_BUTTON_QUANTITY_FIVE, X1 + 230, Y2 - 26, 24, 21);
+      SetButtonBounds(BANK_BUTTON_QUANTITY_TEN,  X1 + 255, Y2 - 26, 24, 21);
+      SetButtonBounds(BANK_BUTTON_QUANTITY_X,    X1 + 280, Y2 - 26, 24, 21);
+      SetButtonBounds(BANK_BUTTON_QUANTITY_ALL,  X1 + 305, Y2 - 26, 24, 21);
+
+      SetButtonBounds(BANK_BUTTON_PLACEHOLDER,       X1 + 331, Y2 - 41, 35, 35);
+      SetButtonBounds(BANK_BUTTON_SEARCH,            X1 + 370, Y2 - 41, 35, 35);
+      SetButtonBounds(BANK_BUTTON_DEPOSIT_INVENTORY, X1 + 409, Y2 - 41, 35, 35);
+      SetButtonBounds(BANK_BUTTON_DEPOSIT_WORN,      X1 + 446, Y2 - 41, 35, 35);
+
+      SetButtonBounds(BANK_BUTTON_CLOSE, X2 - 27, Y1 + 7, 20, 20);
+    end;
+  end;
+end;
+
+function TRSBankScreen._ExpectText(Text: String; Color: Int32 = $000000; Exact: Boolean = False; Time: Int32 = 6000): Boolean;
+var
+  TPA: TPointArray;
+  B: TBox;
+  T: UInt64 := GetTickCount() + Time;
+begin
+  repeat
+    if FindColors(TPA, Color, Chatbox.GetBounds()) then
+    begin
+      B := GetTPABounds(TPA);
+      B := B.Expand(2);
+
+      case Exact of
+        True:
+          if Text = OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+
+        False:
+          if Text in OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+      end;
+    end;
+
+    Wait(0, 1000, wdLeft);
+  until (GetTickCount() >= T);
+end;
+
+function TRSBankScreen.GetTitle(Color: Int32): String;
+var
+  B: TBox;
+begin
+  B := Self.GetBounds();
+  B.Y2 := B.Y1 + 35;
+
+  Result := GetTextAtEx(B, 1, 3, 3, Color, 0, 'UpChars07_s');
+end;
+
+function TRSBankScreen.IsUpText(SubStrs: TStringArray; WaitTime: UInt32 = 350): Boolean;
+var
+  TimeOut: UInt64;
+  Text: String;
+  i: Int32;
+begin
+  Result := False;
+  TimeOut := GetTickCount() + (WaitTime + Random(-20, 50));
+
+  while (TimeOut >= GetTickCount()) do
+  begin
+    Text := Self.GetUpText();
+    for i:=0 to High(SubStrs) do
+      if (SubStrs[i] = '') or (SubStrs[i] in Text) then
+        Exit(True);
+
+    Wait(Random(35, 75));
+  end;
+end;
+
+function TRSBankScreen.GetUpText(): String;
+const
+  OCR_RULES_UPTEXT: TCompareRules = [-1, 85, True, 85];
+var
+  client:T2DIntArray;
+  bmp:Int32;
+begin
+  bmp := BitmapFromClient(mainscreen.UpTextArea);
+  FastReplaceColor(bmp, 2070783, 3424329);
+  //FastReplaceColor(bmp, 0, 3424329);
+  //ShowBitmap(bmp);
+  client := BitmapToMatrix(bmp);
+  Result := OCR.RecognizeEx(client, OCR_RULES_UPTEXT, UpFont);
+  FreeBitmap(bmp);
+  {$IFDEF UPTEXT_DEBUG}
+    srl.Writeln('UpText found: ' + Result);
+  {$ENDIF}
+end;
+
+
+procedure TRSBankScreen.Debug();
+var
+  BMP, i, c: Integer;
+begin
+  BMP := BitmapFromClient(GetClientBounds());
+
+  c := 255;
+  for i:=0 to High(FButtons) do
+  begin
+    DrawTPABitmap(BMP, EdgeFromBox(fButtons[i]), c);
+    c := i + ((c * 128) and $FFFFFF);
+    WriteLn(c);
+  end;
+  for i:=0 to High(FSlots) do
+    DrawTPABitmap(BMP, EdgeFromBox(fSlots[i]), $00FF00);
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+function TRSBankScreen._Find(): Boolean;
+const
+  TEXT_COL = 2070783;
+var
+  p: TPoint;
+begin
+  Result := srl.FindText(p, 'Rearrange mode', 'SmallChars07', TEXT_COL, 0, Box(22,292,378,330));
+  if not Result then
+    Result := srl.FindText(p, 'Withdraw as', 'SmallChars07', TEXT_COL, 0, Box(22,292,378,330));
+end;
+
+(*
+BankScreen.IsOpen
+~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.IsOpen(): Boolean;
+
+returns True if the bankscreen is open
+*)
+function TRSBankScreen.IsOpen(WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self._Find()) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+(*
+BankScreen.OpenAt
+~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.OpenAt(P: TPoint): Boolean;
+
+Returns ``True`` if the bankscreen could be open'd at given location ``P``
+*)
+function TRSBankScreen.OpenAt(P: TPoint): Boolean;
+begin
+  Mouse.Move(P);
+
+  if (MainScreen.IsUpText(['Use Bank', 'Bank chest', 'Bank Bank', 'Bank booth', 'to Banker'])) then
+  begin
+    if (MainScreen.IsUpText(['booth', 'chest'], Random(50, 80))) and (Random(3) <> 0) then
+      Result := Mouse.Click(ctRed)
+    else
+      Result := ChooseOption.Open() and ChooseOption.Select(['Use Bank', 'Bank Bank']);
+
+    if Result then
+    begin
+      Minimap.WaitFlag();
+
+      Result := Bankscreen.IsOpen(Random(3500, 4000));
+    end;
+  end;
+end;
+
+function TRSBankScreen.Open_Yanille: Boolean;
+const
+  colMiddle: TCTS2Color = [5660003, 10, 0.63, 0.79]; // grey
+  colEdge: TCTS2Color = [277329, 10, 0.07, 2.23]; // brown
+var
+  TPA, Edge: TPointArray;
+  ATPA: T2DPointArray;
+  i, j, W, H, Matches: Integer;
+begin
+  if (srl.FindColors(TPA, colMiddle, Mainscreen.GetBounds()) > 20) then
+  begin
+    ATPA := ClusterTPAEx(TPA, 3, 3);
+    SortATPAFromMidPoint(ATPA, Mainscreen.GetMiddle());
+    for i := 0 to High(ATPA) do
+    begin
+      ATPA[i].MinAreaRectEx(W, H);
+      if (W > 15) and (W < 30) and (H >= 6) and (H <= 15) then
+      begin
+        Matches := 0;
+        Edge := FindTPAEdges(ATPA[i]);
+        for j := 0 to High(Edge) do
+          if (NearbyPointInArrayEx(Edge[i], 1, 1, ATPA[i])) then
+            if (Inc(Matches) >= 40) then
+              Break;
+        if (Matches >= 30) and (Self.OpenAt(MiddleTPA(ATPA[i]).Random(-5, 5))) then
+          Exit(True);
+      end;
+    end;
+  end;
+end;
+
+function TRSBankScreen._OpenNPC(Typ: EBankerColor; Area: TBox): Int8;
+const
+  colBlue: TCTS2Color = [4533549, 18, 0.75, 0.96];
+  colGray: TCTS2Color = [6513771, 9, 0.35, 0.10];
+var
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+  i: Integer;
+  b: TBox;
+begin
+  case Typ of
+    bcBlue: srl.FindColors(TPA, colBlue, Area);
+    bcGray: srl.FindColors(TPA, colGray, Area);
+  end;
+
+  if (Length(TPA) > 0) then
+  begin
+    ATPA := ClusterTPA(TPA, 3);
+    SortATPAFromMidPoint(ATPA, MiddleBox(Area));
+
+    for i:=0 to High(ATPA) do
+    begin
+      b := GetTPABounds(ATPA[i]);
+      if (b.Width >= 6) and (b.Height >= 6) then
+        if (Self.OpenAt(MiddleTPA(ATPA[i]).Random(-3,3))) then
+          Exit(1)
+        else
+          Result := 2;
+    end;
+  end;
+end;
+
+(*
+BankScreen._MagicalBankerFinder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. pascal::
+   function TRSBankScreen._MagicalBankerFinder(BoothTopColor: TCTS2Color; BankerColor: EBankerColor; Offset: TPoint): Boolean;
+
+Calculates and finds where a bank NPC should be based from the bank booth.
+*)
+function TRSBankScreen._MagicalBankerFinder(BoothTopColor: TCTS2Color; BankerColor: EBankerColor; Offset: TPoint): Boolean;
+var
+  Rect: TRectangle;
+  TPA: TPointArray;
+  ATPA: T2DPointArray;
+  b: TBox;
+  testRes, i, W, H: Integer;
+  pt, Mid: TPoint;
+begin
+  if (srl.FindColors(TPA, BoothTopColor, Mainscreen.GetBounds()) > 5) then
+  begin
+    ATPA := ClusterTPAEx(TPA, 3, 3);
+    SortATPAFromMidPoint(ATPA, Mainscreen.GetMiddle());
+
+    for i:=0 to High(ATPA) do
+    begin
+      rect := ATPA[i].MinAreaRectEx(W, H);
+      mid := rect.Mean();
+      if (W >= 15) and (W <= 30) and (H <= 8) then
+      begin
+        pt := [Mid.X + Offset.X, Mid.Y + Offset.Y];
+        pt := pt.Rotate(Minimap.GetCompassAngle(False), Mid);
+
+        b := [pt.X - 28, pt.Y - 28, pt.X + 28, pt.Y + 28];
+        b.LimitTo(Mainscreen.GetBounds());
+
+        testRes := Self._OpenNPC(BankerColor, b);
+        if (testRes = 1) then
+          Exit(True)
+        else if (testRes = 2) and Self.OpenAt(mid.Random(-Ceil(rect.Radius), Trunc(rect.Radius))) then
+          Exit(True);
+      end;
+    end;
+  end;
+end;
+
+(*
+BankScreen.Open
+~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.Open(Loc: EBankLocation; Tries: Int32 = 3): Boolean;
+
+Attempts to open the bank at the selected bank location.
+*)
+function TRSBankScreen.Open(Loc: EBankLocation; Tries: Int32 = 3): Boolean;
+begin
+  for 1 to Tries do
+  begin
+    if (Self.IsOpen()) then
+      Exit(True);
+
+    case Loc of
+      blYanille:       Result := Self.Open_Yanille();
+      blLumbridge:     Result := Self._MagicalBankerFinder([607067,  10, 0.47, 0.28], bcBlue, [0,-30]);
+      blAlKharid:      Result := Self._MagicalBankerFinder([4144964, 10, 0.47, 0.28], bcGray, [-30, 0]);
+      blDrynor:        Result := Self._MagicalBankerFinder([4144964, 10, 0.47, 0.28], bcGray, [-30, 0]);
+      blEdgeville:     Result := Self._MagicalBankerFinder([4144964, 10, 0.47, 0.28], bcGray, [30, 0]);
+      blVarrockWest:   Result := Self._MagicalBankerFinder([4144964, 10, 0.47, 0.28], bcBlue, [30, 0]);
+      blVarrockEast:   Result := Self._MagicalBankerFinder([2171173, 10, 0.00, 0.50], bcBlue, [0, 40]);
+      blFaladorEast:   Result := Self._MagicalBankerFinder([2171173, 10, 0.00, 0.50], bcGray, [0, 40]);
+      blFaladorWest:   Result := Self._MagicalBankerFinder([4144964, 10, 0.47, 0.28], bcGray, [0, 40]);
+    end;
+
+    if Result then
+      Exit(True)
+    else
+      WaitEx(800,100);
+  end;
+end;
+
+
+(*
+BankScreen.Close
+~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.Close(): Boolean;
+
+Closes the bankscreen, returns True on success
+*)
+function TRSBankScreen.Close(): Boolean;
+var
+  t: UInt64;
+begin
+  if (not Self.IsOpen()) then
+    Exit(True);
+
+  if (srl.CloseInterfacesWithEscape) then
+  begin
+    Keyboard.PressKey(VK_ESCAPE);
+    t := GetTickCount() + Random(4000, 5000);
+    while (t > GetTickCount()) do
+    begin
+      if (not Self.IsOpen()) then
+        Exit(True);
+    end;
+    srl.ToggleCloseInterfacesWithEscape(False);
+  end;
+
+  Self.ClickButton(BANK_BUTTON_CLOSE);
+  t := GetTickCount() + Random(4000, 5000);
+  while (t > GetTickCount()) do
+  begin
+    if (not Self.IsOpen()) then
+      Exit(True);
+  end;
+end;
+
+
+(*
+BankScreen.ClickButton
+~~~~~~~~~~~~~~~~~~~~~~~
+.. pascal::
+   function TRSBankScreen.ClickButton(btn: EBankButton; clickType: Integer = mouse_Left): Boolean;
+
+Toggles the button
+*)
+function TRSBankScreen.ClickButton(btn: EBankButton; clickType: Integer = mouse_Left): Boolean;
+begin
+  Result := Self.IsOpen();
+
+  if (Result) then
+    Mouse.Click(Self.fButtons[btn], clickType);
+end;
+
+
+(*
+BankScreen.IsToggled
+~~~~~~~~~~~~~~~~~~~~~
+.. pascal::
+   function TRSBankScreen.IsToggled(btn: EBankButton; minMatch:Int32=50): Boolean;
+
+Checks if the given button is red/toggled
+*)
+function TRSBankScreen.IsToggled(btn: EBankButton; minMatch:Int32=50): Boolean;
+begin
+  Result := Self.IsOpen();
+  if Result then
+    Result := CountColorTolerance(1777019, Self.fButtons[btn], 30) > minMatch;
+end;
+
+
+(*
+Bankscreen.FixSlots
+~~~~~~~~~~~~~~~~~~~~~~
+.. pascal:: procedure TRSBankScreen.FixSlots();
+
+Scrolls up to the top of the bank, so slots are aligned.
+*)
+procedure TRSBankScreen.FixSlots();
+var
+  t: UInt64;
+begin
+  if (not Self.IsOpen()) then
+    Exit;
+
+ t := GetTickCount() + Random(7000, 8000);
+ while (GetColor(491, 99) <> 65536) and (t > GetTickCount()) do
+    Mouse.Scroll(IntToBox(73, 83, 497, 292), Random(2, 5), False);
+
+end;
+
+(*
+Bankscreen.GetSlotBox
+~~~~~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.GetSlotBox(Slot: UInt32): TBox;
+
+Returns the bounds of the given slot id.
+*)
+function TRSBankScreen.GetSlotBox(Slot: UInt32): TBox;
+begin
+  if InRange(Slot, 0, High(Self.FSlots)) then
+    Result := Self.FSlots[Slot];
+end;
+
+(*
+Bankscreen.PointToSlot
+~~~~~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.PointToSlot(pt:TPoint): Int32;
+
+Returns the slot-index under the given TPoint.
+If it's not over a slot then -1 is returned
+*)
+function TRSBankScreen.PointToSlot(pt:TPoint): Int32;
+begin
+  if not(PointInBox(Pt, Self.FBounds)) then
+    Exit(-1);
+
+  for Result:=0 to High(self.FSlots) do
+    if PointInBox(pt, Self.FSlots[Result]) then
+      Exit;
+  Result := -1;
+end;
+
+
+(*
+BankScreen.ItemIn
+~~~~~~~~~~~~~~~~~~
+.. pascal::
+   function TRSBankScreen.ItemIn(Slot: UInt32): Boolean;
+   function TRSBankScreen.IsSlotUsed(Slot: UInt32): Boolean;
+
+Returns True if there's an item in the given slot.
+Alias `IsSlotUsed` exists for naming compatiblity with Inventory.
+*)
+function TRSBankScreen.ItemIn(Slot: UInt32): Boolean;
+begin
+  Result := CountColor($010000, self.GetSlotBox(slot)) <> 0;
+end;
+
+function TRSBankScreen.IsSlotUsed(Slot: UInt32): Boolean;
+begin
+  Result := CountColor($010000, self.GetSlotBox(slot)) <> 0;
+end;
+
+(*
+BankScreen.Find????
+~~~~~~~~~~~~~~~~~~~
+.. pascal:: 
+  function TRSBankScreen.FindDTM(DTM: Integer): Int32;
+  function TRSBankScreen.FindBMP(BMP: TMufasaBitmap; Tolerance: Int32): Int32;
+  function TRSBankScreen.FindMask(Mask: TMask; Tolerance, ContourTolerance: Int32): Int32;
+  
+Returns the index of the given DTM, BMP or Mask, otherwise ``-1`` if it's not found.
+*)
+function TRSBankScreen.FindDTM(DTM: Integer): Int32;
+var A: TIntArray;
+begin
+  if self.IsOpen() then
+  begin
+    A := srl.FindDTMInTBA(DTM, Self.FSlots, 1);
+    if A = [] then
+      Result := -1
+    else
+      Result := A[0];
+  end;
+end;
+
+function TRSBankScreen.FindBMP(BMP: TMufasaBitmap; Tolerance: Int32): Int32;
+var A: TIntArray;
+begin
+  if self.IsOpen() then
+  begin
+    A := srl.FindBMPInTBA(BMP, Tolerance, Self.FSlots, 1);
+    if A = [] then
+      Result := -1
+    else
+      Result := A[0];
+  end;
+end;
+
+function TRSBankScreen.FindMask(Mask: TMask; Tolerance, ContourTolerance: Int32): Int32;
+var A: TIntArray;
+begin
+  if self.IsOpen() then
+  begin
+    A := srl.FindMaskInTBA(Mask, Tolerance, ContourTolerance, Self.FSlots, 1);
+    if A = [] then
+      Result := -1
+    else
+      Result := A[0];
+  end;
+end;
+
+(*
+BankScreen.DepositAll
+~~~~~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.DepositAll(): Boolean;
+
+Depositis your inventory by clicking the deposit inventory button
+*)
+function TRSBankScreen.DepositAll(): Boolean;
+begin
+  if (Inventory.Count = 0) then
+    Exit(True);
+  
+  Result := Self.ClickButton(BANK_BUTTON_DEPOSIT_INVENTORY);
+end;
+
+(*
+BankScreen.DepositItem
+~~~~~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.DepositItem(Slot:Int32; DepositAll:Boolean): Boolean;
+
+Depeosit a single item, or all of it's kind from inventory.
+*)
+function TRSBankScreen.DepositItem(Slot:Int32; DepositAll:Boolean): Boolean;
+var
+  t: TCountDown;
+begin
+  if (not self.IsOpen()) or (not Inventory.IsSlotValid(Slot)) then
+    Exit(False);
+
+  Result := not Inventory.IsSlotUsed(Slot, False);
+  if (not Result) then
+  begin
+    Mouse.Move(Inventory.GetSlotBox(Slot)); Wait(40,90);
+
+    if DepositAll then
+    begin
+      ChooseOption.Open();
+      Result := ChooseOption.Select(['Deposit-All']);
+    end else
+    begin
+      Mouse.Click(mouse_left);
+      Result := True;
+    end;
+
+    // wait for and verify completion
+    t.Init(2000);
+    while (not t.IsFinished) and Inventory.IsSlotUsed(Slot, False) do  Wait(70,160);
+    Result := not Inventory.IsSlotUsed(Slot, False);
+  end;
+end;
+
+
+(*
+BankScreen.Deposit
+~~~~~~~~~~~~~~~~~~
+.. pascal:: function TRSBankScreen.Deposit(SlotArr: TIntegerArray): Boolean;
+
+Depeosits all the given items / slots
+*)
+function TRSBankScreen.Deposit(SlotArr: TIntegerArray): Boolean;
+var
+  i,j:Int32;
+  t:UInt64;
+begin
+  if (not self.IsOpen()) then
+    Exit();
+
+  for j:=0 to 1 do
+  begin
+    Result := True;
+    for i:=0 to High(SlotArr) do
+      if Inventory.IsSlotUsed(SlotArr[i]) then
+      begin
+        self.DepositItem(SlotArr[i], srl.GetItemAmount(Inventory.GetSlotBox(slotArr[i])) > 0);
+        Wait(6,25);
+      end;
+
+    for i:=0 to High(SlotArr) do
+      if InRange(SlotArr[i],0,27) then
+      begin
+        t := GetTickCount() + 200;
+        repeat
+          Result := not(inventory.IsSlotUsed(slotArr[i]));
+        until (GetTickCount() > t) or Result;
+      end;
+
+    if Result then
+      Break
+    else
+      Wait(180,265); //wait a bit before round 2
+  end;
+end;
+
+
+(*
+BankScreen.RearrangeMode
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: pascal
+
+  function TRSBankScreen.RearrangeMode(mode:EBankButton): Boolean;
+
+Changes the way items are moved around.
+``Mode`` can be either ``BANK_BUTTON_REARRANGE_SWAP`` or ``BANK_BUTTON_REARRANGE_INSERT``.
+*)
+function TRSBankScreen.RearrangeMode(mode:EBankButton): Boolean;
+begin
+  if not(mode in [BANK_BUTTON_REARRANGE_SWAP, BANK_BUTTON_REARRANGE_INSERT]) then
+    RaiseException('Invalid rearrange mode: '+ToString(mode));
+
+  Result := self.IsToggled(mode) or Self.ClickButton(mode);
+end;
+
+
+(*
+BankScreen.WithdrawAs
+~~~~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: pascal
+
+  function TRSBankScreen.WithdrawAs(mode:EBankButton): Boolean;
+
+Changes the way items are withdrawn.
+`Mode`` can be either ``BANK_BUTTON_WITHDRAW_ITEM`` and ``BANK_BUTTON_WITHDRAW_NOTE``.
+*)
+function TRSBankScreen.WithdrawAs(mode:EBankButton): Boolean;
+begin
+  if not(mode in [BANK_BUTTON_WITHDRAW_ITEM, BANK_BUTTON_WITHDRAW_NOTE]) then
+    RaiseException('Invalid withdraw mode: '+ToString(mode));
+
+  Result := self.IsToggled(mode) or Self.ClickButton(mode);
+end;
+
+
+(*
+BankScreen.Search
+~~~~~~~~~~~~~~~~~
+.. code-block:: pascal
+   function TRSBankScreen.Search(Item: String): Boolean;
+
+Search for an item using the search option in the bank.
+*)
+function TRSBankScreen.Search(Item: String): Boolean;
+var
+  T: UInt64;
+begin
+  if (not Self.IsOpen()) then
+    Exit(False);
+
+  if (not Self._ExpectText('Show items', $000000, False, 0)) and
+     (not Self.ClickButton(BANK_BUTTON_SEARCH)) then
+    Exit(False);
+
+  if Self._ExpectText('Show items') then
+  begin
+    while (not Self._ExpectText('*', $800000, True, 0)) do
+      Keyboard.PressKey(VK_BACK);
+    Keyboard.Send(Item);
+
+    T := GetTickCount() + Random(2500, 3000);
+    while (T > GetTickCount()) do
+    begin
+      if Self.GetTitle($0000FF) = Item then
+        Exit(True);
+
+      Wait(0, 1000, wdLeft);
+    end;
+  end;
+end;
+
+function TRSBankScreen.SetQuantity(Quantity: EBankButton): Boolean;
+begin
+  if not (Quantity in [BANK_BUTTON_QUANTITY_ONE..BANK_BUTTON_QUANTITY_ALL]) then
+    RaiseException('Invalid quantity: ' + ToString(Quantity));
+
+  Result := self.IsToggled(Quantity) or Self.ClickButton(Quantity);
+end;
+
+(*
+BankScreen.Withdraw
+~~~~~~~~~~~~~~~~~~~
+.. code-block:: pascal
+
+  function TRSBankScreen.Withdraw(slot, amount:Int32; upText:TStringArray=[]; withdrawMode:EBankButton=bbItem): Boolean;
+
+Withdraws the the amount ``amount`` from the bank slot ``slot``. If it fails to withdraw it will return False
+
+Extra vaild constants for ``amount`` are:
+
+   - ``WITHDRAW_ALL = -1;``
+   - ``WITHDRAW_ALL_BUT_ONE = -2;``
+
+**Example:**
+
+.. pascal::
+    // withdraw 28 items from slot 1 if uptext matches
+    bankscreen.Withdraw(1, 28, ['Iron']);
+
+    // withdraw 500 items as notes from slot 1 if uptext matches
+    bankscreen.Withdraw(1, 500, ['Iron'], bbNote);
+
+    // withdraw all items from slot 10 if uptext matches
+    bankscreen.Withdraw(10, WITHDRAW_ALL, ['Iron']);
+
+    // withdraw 28 items from slot 1 and will *ignore* uptext
+    bankscreen.Withdraw(1, 28);
+    
+.. note:: by slacky
+*)
+function TRSBankScreen.Withdraw(Box: TBox; Amount: Int32; UpText: TStringArray = []; WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean; overload;
+begin
+  if (not Self.IsOpen()) then
+    Exit(False);
+  if (CountColor($010000, Box) = 0) then
+    Exit(False);
+
+  Self.WithdrawAs(WithdrawMode);
+  Self.SetQuantity(Quantity);
+
+  Wait(90, 170);
+  Mouse.Move(Box);
+  Wait(90, 170);
+
+  if (UpText <> []) and (not BankScreen.IsUpText(UpText)) then
+    Exit(False);
+
+  if (Amount = 1) then
+  begin
+    Mouse.Click(MOUSE_LEFT);
+
+    Exit(True);
+  end else
+  begin
+    ChooseOption.Open();
+
+    if Amount = WITHDRAW_ALL then
+      Result := ChooseOption.Select(['Withdraw-All'])
+
+    else if Amount = WITHDRAW_ALL_BUT_ONE then
+      Result := ChooseOption.Select(['Withdraw-All-but'])
+
+    else if ChooseOption.Select(['Withdraw-'+ToString(Amount)+' '],,False) then  // space after amount so it can't find "2" in 28
+      Result := True
+
+    else if ChooseOption.Select(['Withdraw-X']) and
+       self._ExpectText('Enter amount') then
+    begin
+      Keyboard.Send(ToString(Amount),VK_RETURN);
+
+      Result := True;
+    end;
+  end;
+end;
+
+function TRSBankScreen.Withdraw(Slot: Int32; Amount: Int32; UpText: TStringArray = []; WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean; overload;
+begin
+  Result := Self.Withdraw(Self.GetSlotBox(Slot), Amount, UpText, WithdrawMode, Quantity);
+end;
+
+begin
+  BankScreen.__Setup();
+end;

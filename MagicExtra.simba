@@ -1,0 +1,179 @@
+
+
+type
+  TRSLunarSpells = record(TInterfaceBase)
+    FSlots: TBoxArray;
+  end;
+
+var
+  LunarSpells: TRSLunarSpells;
+
+type
+  ELunarSpellCast = (
+    CAST_HOME_TELEPORT,
+    CAST_BAKE_PIE,
+    CAST_GEOMANCY,
+    CAST_CURE_PLANT,
+    CAST_MONSTER_EXAMINE,
+
+    CAST_NPC_CONTACT,
+    CAST_CURE_OTHER,
+    CAST_HUMIDIFY,
+    CAST_MOONCLAN_TELEPORT,
+    CAST_TELE_GROUP_MOONCLAN,
+
+    CAST_CURE_ME,
+    CAST_OURANIA_TELEPORT,
+    CAST_HUNTER_KIT,
+    CAST_WATERBIRTH_TELEPORT,
+    CAST_TELE_GROUP_WATERBIRTH,
+
+    CAST_CURE_GROUP,
+    CAST_STAT_SPY,
+    CAST_BARBARIAN_TELEPORT,
+    CAST_TELE_GROUP_BARBARIAN,
+    CAST_SPIN_FLAX,
+
+    CAST_SUPERGLASS_MAKE,
+    CAST_TAN_LEATHER,
+    CAST_KHAZARD_TELEPORT,
+    CAST_TELE_GROUP_KHAZARD,
+    CAST_DREAM,
+
+    CAST_STRING_JEWELLERY,
+    CAST_STAT_RESTORE_POT_SHARE,
+    CAST_MAGIC_IMBUE,
+    CAST_FERTILE_SOIL,
+    CAST_BOOST_POTION_SHARE,
+
+    CAST_FISHING_GUILD_TELEPORT,
+    CAST_BOUNTY_TELEPORT,
+    CAST_TELE_GROUP_FISHING_GUILD,
+    CAST_PLANK_MAKE,
+    CAST_CATHERBY_TELEPORT,
+
+    CAST_TELE_GROUP_CATHERBY,
+    CAST_RECHARGE_DRAGONSTONE,
+    CAST_ICE_PLATEU_TELEPORT,
+    CAST_TELE_GROUP_ICE_PLATEU,
+    CAST_ENERGY_TRANSFER,
+
+    CAST_HEAL_OTHER,
+    CAST_VENGEANCE_OTHER,
+    CAST_VENGEANCE,
+    CAST_HEAL_GROUP,
+    CAST_SPELLBOOK_SWAP
+  );
+
+
+{$IFNDEF CODEINSIGHT}
+
+
+procedure TRSLunarSpells.__Setup();
+var
+  SlotBounds:TBox = [543,205,740,444];
+begin
+  with Self do
+  begin
+    FName := 'LunarSpells';
+    FStatic := True;
+    FBounds := [548,205,735,464];
+    FSlots := SlotBounds.PartitionEx(9, 5, 0, -7);
+  end;
+end;
+
+procedure TRSLunarSpells.Debug();
+var
+  BMP: TMufasaBitmap;
+begin
+  BMP := GetMufasaBitmap( BitmapFromClient(SRL.DefaultClientBounds) );
+  BMP.DrawBoxes(Self.FSlots, False, $0000FF);
+  BMP.DrawBox(FBounds, False, $00FF00);
+  BMP.Debug();
+  BMP.Free();
+end;
+{$ENDIF}
+
+function TRSLunarSpells.GetSpellBox(LunarSpell: ELunarSpellCast): TBox;
+begin
+  Result := Self.FSlots[LunarSpell];
+end;
+
+function TRSLunarSpells.PointToSlot(PT: TPoint): Int32;
+begin
+  for Result:=0 to High(Self.FSlots) do
+    if Self.FSlots[Result].Contains(PT) then
+      Exit(Result);
+  Result := -1;
+end;
+
+function TRSLunarSpells.MouseOver(LunarSpell: ELunarSpellCast; Rng: ERandomStyle=rndGauss): Boolean;
+begin
+  if not (Spells.Open()) then Exit();
+
+  Result := True;
+  Mouse.Move(Self.FSlots[LunarSpell],,Rng);
+end;
+
+function TRSLunarSpells.CanActivate(LunarSpell: ELunarSpellCast): Boolean;
+begin
+  if not Spells.Open() then
+    Exit();
+
+  Result := srl.PeakBrightness(self.GetSpellBox(LunarSpell)) > 35;
+end;
+
+function TRSLunarSpells.Selected(LunarSpell: ELunarSpellCast): Boolean;
+begin
+  if (not Spells.Open()) then
+    Exit();
+
+  Result := CountColor(16777215, Self.FSlots[LunarSpell]) > 10;
+end;
+
+function TRSLunarSpells.Cast(LunarSpell: ELunarSpellCast; Rng:ERandomStyle=rndGauss): Boolean;
+begin
+  if Self.Selected(LunarSpell) then
+    Exit(True);
+
+  if self.CanActivate(LunarSpell) then
+  begin
+    Result := Self.MouseOver(LunarSpell, Rng);
+    Mouse.Click(mouse_Left);
+  end;
+end;
+
+
+function Spells.WasCasted(): Boolean;
+var
+  pt: TPoint;
+  MagicIconDTM := DTMFromString('mrAAAAHic42BgYHjJyMDwFoifAPELKP0BiF8B8Wsg9gOqCQTiICB2A2JvIA4A4mAg9gdiabZJDAxs/zBoBgZGhi2r2RioBQDbBBBb');
+begin
+  Result := FindDTM(MagicIconDTM, pt.x, pt.y, 425, 5, 510, 165);
+  FreeDTM(MagicIconDTM);
+end
+
+function Spells.WasTeleported(WaitTime: UInt32 = 2400): Boolean;
+var
+  t: UInt64;
+begin
+  Result := False;
+
+  t := GetTickCount() + WaitTime;
+  repeat
+    if Self.WasCasted() then
+    begin
+      Wait(2400);
+      Exit(True);
+    end
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+
+end;
+
+
+
+begin
+  LunarSpells.__setup();
+end;

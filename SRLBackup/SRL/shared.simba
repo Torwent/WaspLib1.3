@@ -1,0 +1,24 @@
+{$DEFINE SRL}
+
+{$include_once shared/globals.simba}
+{$IFDEF SIMBAMAJOR1200}{$include_once shared/onterminate.simba}{$ENDIF}
+{$include_once shared/interfacebase.simba}
+{$include_once shared/wrappers.simba}
+
+{$include_once shared/srl.simba}
+{$include_once shared/pixelshift.simba}
+{$include_once shared/random.simba}
+{$include_once shared/math.simba}
+{$include_once shared/mouse.simba}
+{$include_once shared/keyboard.simba}
+{$include_once shared/time.simba}
+{$include_once shared/text.simba}
+{$include_once shared/color.simba}
+{$include_once shared/types.simba}
+{$include_once shared/drawing.simba}
+
+begin
+
+end;
+
+

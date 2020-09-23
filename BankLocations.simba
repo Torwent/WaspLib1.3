@@ -1,0 +1,146 @@
+type
+
+  TWaspBanking = record
+    Action: String;
+  end;
+
+var
+  WaspBanking: TWaspBanking;
+  BankRSW: TRSWalker;
+
+  VWestBank0 := Point(4553, 2673);
+  VWestBank1 := Point(4553, 2680);
+  VWestBank2 := Point(4553, 2688);
+  VWestBank3 := Point(4553, 2696);
+  VWestBank4 := Point(4554, 2705);
+
+  VWestBank := [VWestBank0, VWestBank1, VWestBank2, VWestBank3, VWestBank4];
+  VWBankColor := CTS2(998986, 12, 0.13, 2.87);
+
+  GEWestBank0 := Point(4459, 2487);
+  GEWestBank1 := Point(4459, 2491);
+  GeWestBank := [GEWestBank0, GeWestBank1];
+
+  GEEastBank0 := Point(4476, 2488);
+  GEEastBank1 := Point(4476, 2492);
+  GEEastBank := [GEEastBank0, GEEastBank1];
+
+  GEBanks := [GEWestBank0, GeWestBank1, GEEastBank0, GEEastBank1];
+  GEStructureColor := CTS2(3822173, 23, 0.06, 0.38);
+
+  EdgeBank := [Point(4189, 2483)];
+  EdgeBankColor := CTS2(2646148, 21, 0.10, 2.25);
+
+  CWBank := [Point(1586, 4115)];
+  CWBankColor := CTS2(4475747, 15, 0.27, 1.09);
+
+  ClosestBankTiles: TPointArray;
+  ClosestBankColor: TCTS2Color;
+
+
+function WaspBanking.OpenBank(Tile: TPoint; Color: TCTS2Color): Boolean;
+begin
+  Result := Obj.Click(Tile, Color, ['Bank', 'booth', 'chest'], True, 2, BankRSW);
+end;
+
+function WaspBanking.OpenBank(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
+begin
+  Result := Obj.Click(Tiles, Color, ['Bank', 'booth', 'chest'], True, 2, BankRSW);
+end;
+
+procedure WaspBanking.LoadMap(DisableWorldWalker: Boolean = True);
+begin
+  if Wasp.AtLocation(VWestBank, 100) then
+  begin
+    BankRSW.InitEx('world', [[3, 5], [3, 6]]);
+    ClosestBankTiles := VWestBank;
+    ClosestBankColor := VWBankColor;
+  end
+  else if Wasp.AtLocation(EdgeBank, 100) then
+  begin
+    BankRSW.InitEx('world', [[3, 5]]);
+    ClosestBankTiles := EdgeBank;
+    ClosestBankColor := EdgeBankColor;
+  end
+  else if Wasp.AtLocation(GEBanks, 100) then
+  begin
+    BankRSW.InitEx('world', [[3, 5], [3, 6]]);
+    ClosestBankTiles := GEBanks;
+    ClosestBankColor := GEStructureColor;
+  end
+  else if Wasp.AtLocation(CWBank, 100) then
+  begin
+    BankRSW.InitEx('world', [[5, 1], [5, 2]]);
+    ClosestBankTiles := CWBank;
+    ClosestBankColor := CWBankColor;
+  end;
+
+  if DisableWorldWalker then
+    WaspRSW.Free();
+end;
+
+procedure Wasp.LoadSmallerMap();
+begin
+  if Self.AtLocation(VWestBank, 100) then
+  begin
+    Self.LoadMapSlices('world', [[3, 5], [3, 6]]);
+    ClosestBankTiles := VWestBank;
+    ClosestBankColor := VWBankColor;
+  end
+  else if Self.AtLocation(EdgeBank, 100) then
+  begin
+    Self.LoadMapSlices('world', [[3, 5]]);
+    ClosestBankTiles := EdgeBank;
+    ClosestBankColor := EdgeBankColor;
+  end
+  else if Self.AtLocation(GEBanks, 100) then
+  begin
+    Self.LoadMapSlices('world', [[3, 5], [3, 6]]);
+    ClosestBankTiles := GEBanks;
+    ClosestBankColor := GEStructureColor;
+  end
+  else if Self.AtLocation(CWBank, 100) then
+  begin
+    Self.LoadMapSlices('world', [[5, 1], [5, 2]]);
+    ClosestBankTiles := CWBank;
+    ClosestBankColor := CWBankColor;
+  end;
+end;
+
+function WaspBanking.AtLocation(Tile: TPoint; Distance: Int32 = 15): Boolean;
+begin
+  Result := (BankRSW.GetMyPos.DistanceTo(Tile) <= Distance);
+end;
+
+function WaspBanking.AtLocation(Tiles: TPointArray; Distance: Int32 = 15): Boolean; overload;
+var
+  i: Int32;
+begin
+  Result := False
+
+  for i := 0 to (Length(Tiles) - 1) do
+  begin
+    if (BankRSW.GetMyPos.DistanceTo(Tiles[i]) <= Distance) then
+      Exit(True);
+  end;
+end;
+
+
+
+function WaspBanking.OpenClosestBank(): Boolean;
+begin
+  if not Self.AtLocation(ClosestBankTiles) then
+    Exit(False);
+
+  Result := Self.OpenBank(ClosestBankTiles, ClosestBankColor);
+end;
+
+
+procedure WaspBanking.Free();
+begin
+  BankRSW.Free();                             ;
+end;
+
+begin
+  AddOnTerminate(@WaspBanking.Free);
+end;

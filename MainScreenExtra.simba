@@ -1,0 +1,5 @@
+function TRSMainScreen.GetAroundPlayerBox(): TBox;
+begin
+  with Self.GetMiddle() do
+    Result := [X - 120, Y - 120, X + 120, Y + 120];
+end;

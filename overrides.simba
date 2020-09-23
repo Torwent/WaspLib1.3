@@ -1,0 +1,133 @@
+procedure TRSGametab.__Setup(); override;
+begin
+  with Self do
+  begin
+    UpperTabs := [527,168,760,204];
+    LowerTabs := [527,466,760,502];
+    FBounds := LowerTabs + UpperTabs;
+
+    Tabs := UpperTabs.Partition(1, 7, -3);
+    Tabs.Extend(LowerTabs.Partition(1, 7, -3));
+
+    Keybindings := [VK_F5, VK_F1, VK_F7, VK_ESCAPE, VK_F2, VK_F3, VK_F4, 0,
+                    VK_F9, VK_F6, VK_F8, 0, 0, 0];
+  end;
+end;
+
+// Added some probability of not using FKeys if they are enabled... a real player doesn't use FKEY 100% of
+// the time IMO.
+function TRSGametab.Open(Tab: EGametab; Tries: Int32=2): Boolean; override;
+var
+  i:Int32;
+  B:TBox;
+begin
+  B := self.GetBounds(Tab);
+  if Self.IsOpen(Tab) then
+    Exit(True);
+
+  for i:=1 to Tries do
+  begin
+    if (Self.FKeysEnabled and (Keybindings[Ord(tab)] <> 0) and (Random(0,99) > Random(3,9))) then
+    begin
+      Keyboard.PressKey(Keybindings[Ord(tab)]);
+      if self.IsOpen(Tab, Random(1500,2500)) then
+        Exit(True);
+      Self.ToggleFKeys(False);
+    end;
+
+    Mouse.Click(B, mouse_Left, False, rndSkewed);
+    if self.IsOpen(Tab, Random(1500,2500)) then
+      Exit(True);
+  end;
+end;
+
+// This next function override fixes some crashes
+function TRSMinimap.GetCompassAngle(AsDegrees:Boolean=True): Double; override;
+var
+  north, south: TPoint;
+  M: TPoint := Self.CompassInfo.Middle;
+  TPA: TPointArray;
+begin
+  if not SRL.IsLoggedIn(10000) then
+    Players.LoginCurrent();
+
+  if FindColorsTolerance(TPA, 1911089, Self.CompassInfo.Bounds, 25) then
+    FilterPointsDist(TPA, 8, 15, M.X, M.Y);
+
+  if (Length(TPA) > 0) then
+  begin
+    north := MiddleTPA(SplitTPA(TPA,3)[0]);
+    south := RotatePoint(north, PI, M.X, M.Y);
+
+    if FindColorsTolerance(TPA, 920735, Self.CompassInfo.Bounds, 25) then
+      FilterPointsDist(TPA, 0,6, south.X, south.Y);
+    SortTPAFrom(TPA, M);
+
+    if (Length(TPA) > 0) then
+    begin
+      Result := FixRad(ArcTan2(TPA[High(TPA)].Y-M.Y, TPA[High(TPA)].X-M.X) - (PI/2));
+      if (Result <> 0) then
+	      Result += 0.0333; //compass dial is floored.. this makes us more accurate.
+    end else
+      srl.Writeln('Compass dots not found');
+  end else
+    srl.WriteLn('Compass `N` not found');
+
+  if AsDegrees then
+    Result := Degrees(Result);
+end;
+
+
+procedure TRSWorldArray.Load; override;
+var
+  List, Info: TStringArray;
+  World: TRSWorld;
+  Prop: String;
+  i: Int32;
+begin
+  List := MultiBetween(GetPage('http://oldschool.runescape.com/slu'), '<tr class=''server-list__row', '</tr>');
+
+  for i := 0 to High(List) do
+  begin
+    // [0]URL
+    // [1]Players
+    // [2]Location
+    // [3]Type
+    // [4]Activity
+
+    Info := MultiBetween(List[i], 'server-list__row-cell', '</td>');
+    if (Length(Info) <> 5) then
+      Continue;
+
+    World := [StrToIntDef(Between('world-', '''', Info[0]), - 1)];
+    if (World.ID > 400) then
+      World.Properties += WORLD_EVENT;
+
+    for Prop in [Info[2], Info[3], Info[4]] do
+      case LowerCase(Copy(Prop, Pos('>', Prop) + 1)) of
+        'members':
+          World.Properties += WORLD_MEMBERS;
+        'free':
+          World.Properties += WORLD_FREE;
+        '500 skill total', '750 skill total', '1000 skill total', '1250 skill total', '1500 skill total', '1750 skill total', '2000 skill total', '2200 skill total':
+          World.Properties += WORLD_SKILL;
+        'deadman':
+          World.Properties += WORLD_DEADMAN;
+        'pvp world - high risk', 'pvp world', 'pvp world - free':
+          World.Properties += WORLD_PVP;
+        'united states':
+          World.Properties += WORLD_USA;
+        'germany':
+          World.Properties += WORLD_GERMANY;
+        'united kingdom':
+          World.Properties += WORLD_UK;
+        'australia':
+          World.Properties += WORLD_AUSTRALIA;
+      end;
+
+    Self += World;
+  end;
+
+  if (Length(Self) = 0) then
+    srl.WriteLn('Failed to load worlds', dtFatal);
+end;

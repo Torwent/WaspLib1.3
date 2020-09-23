@@ -1,0 +1,30 @@
+
+// This next 2 functions were made because the current way SRL does it
+// is unreliable and crashes often.
+
+
+
+function TRSSmithingScreen._Find(): Boolean;
+const
+  TEXT_COL = 2070783;
+var
+  p: TPoint;
+begin
+  Result := (srl.FindText(P, 'like', 'UpChars07_s', 2070783, 0, Box(155, 15, 360, 40)));
+  if not Result then
+  Result := (srl.FindText(P, 'make', 'UpChars07_s', 2070783, 0, Box(155, 15, 360, 40)))
+end;
+
+function TRSSmithingScreen.IsOpen2(WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self._Find()) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;

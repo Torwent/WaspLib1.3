@@ -1,0 +1,63 @@
+function TRSMinimap.SpecialAttackEnabled(const Time: UInt32 = 0): Boolean;
+var
+  b: TBox;
+begin
+  with (Self.OrbInfo[Ord(MMOrbSpecialAttack)].Middle) do
+    b := [X - 7, Y - 7, X + 7, Y + 7];
+
+  if (Time = 0) then
+    Result := (CountColorTolerance(11579305, b, 21) > 15)
+  else
+    Result := srl.WaitColorCount([11579305, 21], b, @GreaterThan, 15, Time);
+end;
+
+function TRSMinimap.WeaponHasSpecialAttack(const Time: UInt32 = 0): Boolean;
+var
+  b: TBox;
+begin
+  with (Self.OrbInfo[Ord(MMOrbSpecialAttack)].Middle) do
+    b := [X - 7, Y - 7, X + 7, Y + 7];
+
+  if (Time = 0) then
+    Result := not (CountColorTolerance(9278355, b, 21) > 15)
+  else
+    Result := not srl.WaitColorCount([9278355, 21], b, @GreaterThan, 15, Time);
+end;
+
+(*
+Minimap.ToggleSpecialAttack
+~~~~~~~~~~~~~~~~~~~~~
+.. code-block:: pascal
+
+    function TRSMinimap.ToggleSpecialAttack(const Enable: Boolean; MinimumSpecialAttack: Int64): Boolean;
+
+A toggle to enable or disable prayer.
+*)
+function TRSMinimap.ToggleSpecialAttack(const Enable: Boolean): Boolean;
+var t: TCountDown;
+begin
+  if ((not Self.WeaponHasSpecialAttack()) or
+      (Self.GetSpecialAttack() = 0)) then
+    Exit(False);
+
+  if (Enable = Self.SpecialAttackEnabled()) then Exit(True);
+  with (Self.OrbInfo[Ord(MMOrbSpecialAttack)]) do
+  begin
+    Mouse.Click(Middle, Radius, mouse_Left);
+    t.Init(1000);
+    while (not t.IsFinished()) and (Self.SpecialAttackEnabled() <> Enable) do
+      Wait(40);
+    Result := Self.SpecialAttackEnabled() = Enable;
+  end;
+end;
+
+function TRSMinimap.StaminaEnabled(const Time: UInt32 = 0): Boolean;
+begin
+  if (Time = 0) then
+    Result := (GetColor(Self.OrbInfo[Ord(MMOrbRun)].Middle) = 1857749)
+  else
+    Result := srl.WaitColor(1857749, Self.OrbInfo[Ord(MMOrbRun)].Middle, Time);
+end;
+
+
+

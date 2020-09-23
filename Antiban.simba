@@ -1,0 +1,472 @@
+// Most of there are self explatanatory so there won't be any comments...
+// Most of the overriden procedures were done to add a interface check because my scripts were often breaking
+// due to the bot trying to check the stats with the bank open for example.
+
+
+// Antiban overrides
+procedure TAntiban.HoverPlayers(); override;
+begin
+  DebugNote('[RND] Hovering players');
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+  srl.HoverRandomPlayer(25);
+end;
+
+procedure TAntiban.CheckSkill(); override;
+var
+  Skill:Int32;
+begin
+  DebugNote('[RND] Check Skill Stats');
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  if Length(ActiveSkills) > 0 then
+  begin
+    Skill := Self.ActiveSkills[Random(Length(Self.ActiveSkills))];
+    Stats.HoverSkill(Skill, srl.GaussRand(2500,300), Random(3)=0);
+  end;
+end;
+
+procedure TAntiban.CheckStats(); override;
+begin
+  DebugNote('[RND] Look at Stats');
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  Stats.Open();
+  if Random(4)=0 then
+    Stats.HoverSkill(Random(SKILL_TOTAL), srl.GaussRand(3000,300))
+  else
+    WaitEx(3000,300);
+  if Random(2) = 0 then
+    Inventory.Open();
+end;
+
+procedure TAntiban.OpenRandomTab(); override;
+begin
+  DebugNote('[RND] Open Random Tab');
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  Gametabs.Open(EGametab(Random(High(Gametabs.Tabs))));
+  WaitEx(1600,100);
+  if Random(4) = 0 then Inventory.Open()
+  else if Random(4) = 0 then Stats.Open();
+end;
+
+procedure TAntiban.VeryShortBreak(); override;
+begin
+  DebugNote('[RND] Taking a breather');
+  if(Random(2)=0) then SRL.LoseFocus();
+  WaitEx(30000,5000);
+  SRL.SetFocus();
+  Players.GetCurrent()^.Login();
+  Wait(60,600, wdLeft);
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  if Random(4) = 0 then Self.CheckSkill();
+end;
+
+procedure TAntiban.DoMiscStuff(); override;
+begin
+  DebugNote('[RND] Doing misc stuff');
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  for 0 to Random(2) do
+  begin
+    if Random(3) = 0 then
+      Gametabs.Open(EGametab(Random(High(Gametabs.Tabs))));
+
+    WaitEx(1500,200);
+    if(Random(8) = 0) then
+    begin
+      if(Random(2) = 0) then SRL.LoseFocus();
+      WaitEx(40000,4500);
+      SRL.SetFocus();
+    end;
+
+    if(Random(3) = 0) then
+    begin
+      Self.CheckStats();
+      WaitEx(2000,200);
+    end;
+  end;
+end;
+
+
+// Focus antibans
+procedure TAntiban.LoseFocusShort();
+begin
+  DebugNote('[RND] Losing focus');
+  SRL.LoseFocus();
+  Players.GetCurrent()^.Login();
+  // Assuming you are using {$I SRL/utils/rsclient.simba} you shouldn't need to use SRL.SetFocus.
+end;
+
+procedure TAntiban.RandomMouseOffClient();
+begin
+  DebugNote('[RND] Random Mouse off Client');
+  srl.MouseOffClient(Random(0, 3));
+end
+
+procedure TAntiban.MouseOffLeft();
+begin
+  DebugNote('[RND] Mouse Off Client Left');
+  srl.MouseOffClient(2);
+end;
+
+procedure TAntiban.MouseOffRight();
+begin
+  DebugNote('[RND] Mouse Off Client Right');
+  srl.MouseOffClient(3);
+end;
+
+procedure TAntiban.MouseOffDown();
+begin
+  DebugNote('[RND] Mouse Off Client Down');
+  srl.MouseOffClient(1);
+end;
+
+procedure TAntiban.MouseOffUp();
+begin
+  DebugNote('[RND] Mouse Off Client Up');
+  srl.MouseOffClient(0);
+end;
+
+
+// Bankscreen antibans
+procedure TAntiban.ToggleBankTab();
+var
+  CurrentBankTab: EBankTab;
+begin
+  DebugNote('[RND] Going to open a random bank tab and go back to the current one');
+  if not BankScreen.IsOpen() then
+  begin
+    DebugNote('[RND] Bankscreen is not open.');
+    Exit();
+  end;
+
+  CurrentBankTab := BankScreen.GetCurrentTab();
+
+  BankScreen.OpenTab(EBankTab(Random(0, BankScreen.CountTabs())));
+
+  // TODO: Add random item hovering.
+  Wait(1500, 2500);
+
+  BankScreen.OpenTab(CurrentBankTab);
+end;
+
+procedure TAntiban.ToggleRandomBankButtons();
+begin
+  case Random(0, 2) of
+    0: Self.ToggleBankRearrangeButtons();
+    1: Self.ToggleBankWithdrawButtons();
+    2: Self.ToggleBankQuantityButtons();
+  end;
+end;
+
+procedure TAntiban.ToggleBankRearrangeButtons();
+begin
+  DebugNote('[RND] Going to change bank rearrange mode and go back to the current one');
+  if BankScreen.IsToggled(BANK_BUTTON_REARRANGE_SWAP) then
+    BankScreen.ClickButton(BANK_BUTTON_REARRANGE_INSERT)
+  else
+    BankScreen.ClickButton(BANK_BUTTON_REARRANGE_SWAP);
+
+  Wait(1500, 3000);
+
+  if BankScreen.IsToggled(BANK_BUTTON_REARRANGE_SWAP) then
+    BankScreen.ClickButton(BANK_BUTTON_REARRANGE_INSERT)
+  else
+    BankScreen.ClickButton(BANK_BUTTON_REARRANGE_SWAP);
+end;
+
+procedure TAntiban.ToggleBankWithdrawButtons();
+begin
+  DebugNote('[RND] Going to change bank withdraw mode and go back to the current one');
+  if BankScreen.IsToggled(BANK_BUTTON_WITHDRAW_ITEM) then
+    BankScreen.ClickButton(BANK_BUTTON_WITHDRAW_NOTE)
+  else
+    BankScreen.ClickButton(BANK_BUTTON_WITHDRAW_ITEM);
+
+  Wait(1500, 3000);
+
+  if BankScreen.IsToggled(BANK_BUTTON_WITHDRAW_ITEM) then
+    BankScreen.ClickButton(BANK_BUTTON_WITHDRAW_NOTE)
+  else
+    BankScreen.ClickButton(BANK_BUTTON_WITHDRAW_ITEM);
+end;
+
+procedure TAntiban.ToggleBankQuantityButtons();
+var
+  CurrentQuantity: EBankButton;
+  i: Int32;
+begin
+  DebugNote('[RND] Going to change bank quantity mode and go back to the current one');
+
+  for i := 4 to 8 do
+  begin
+    if BankScreen.IsToggled(EBankButton(i)) then
+      CurrentQuantity := EBankButton(i);
+  end;
+
+  BankScreen.ClickButton(EBankButton(Random(4, 8)));
+
+  Wait(1500, 3000);
+  if Random(0, 5) = 5 then
+  begin
+    BankScreen.ClickButton(EBankButton(Random(4, 8)));
+    Wait(150, 250);
+  end;
+
+  BankScreen.ClickButton(CurrentQuantity);
+end;
+
+
+// Random cliking antibans
+procedure TAntiban.RandomRightClick();
+begin
+  if Random(0, 100) > Random(35, 45) then
+    Self.RightClickMS()
+  else
+    Self.RightClickChat();
+end;
+
+procedure TAntiban.RightClickChat();
+begin
+  DebugNote('[RND] Right clicking the chatbox');
+  if ChatboxUI.IsOpen() then
+    Exit();
+  Mouse.Move(Chatbox.FBounds);
+  ChooseOption.Open();
+  Wait(300, 3000, wdLeft);
+  ChooseOption.Close();
+end;
+
+procedure TAntiban.RightClickMS();
+begin
+  DebugNote('[RND] Right clicking mainscreen');
+  Mouse.Move(MainScreen.FBounds);
+  ChooseOption.Open();
+  Wait(300, 3000, wdLeft);
+  ChooseOption.Close();
+end;
+
+
+// Toggling random stuff antibans
+procedure TAntiban.ToggleRun();
+begin
+  DebugNote('[RND] Toggling Run');
+  if Minimap.isRunEnabled() then
+  begin
+    Minimap.ToggleRun(false);
+    Wait(500, 2500);
+    Minimap.ToggleRun(true);
+  end
+    else
+  begin
+    Minimap.ToggleRun(true);
+    Wait(500, 2500);
+    Minimap.ToggleRun(false);
+  end;
+end;
+
+procedure TAntiban.ToggleQPray();
+begin
+  DebugNote('[RND] Toggling Quick Pray');
+  if Minimap.isPrayerEnabled() then
+  begin
+    Minimap.TogglePrayer(false);
+    Wait(500, 1500, wdLeft);
+    Minimap.TogglePrayer(true);
+  end
+    else
+  begin
+    Minimap.TogglePrayer(true);
+    Wait(500, 1500, wdLeft);
+    Minimap.TogglePrayer(false);
+  end;
+end;
+
+procedure TAntiban.ToggleAcceptAid();
+var
+ button:TBox = [555,425,590,464];
+begin
+  DebugNote('[RND] Toggling Accept Aid');
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  if not Options.isOpen() then
+    Options.Open();
+  if GtButton(button).IsEnabled() then
+    Options.ToggleAcceptAid(false)
+  else
+    Options.ToggleAcceptAid(true);
+end;
+
+
+// Chatbox antibans
+procedure TAntiban.ChatScrolling();
+begin
+  DebugNote('[RND] Random scrolling on chat');
+  Chatbox.RandomScroll();
+end;
+
+procedure TAntiban.ToggleChatTab();
+var
+  CurrentTab: EChatTab;
+begin
+  DebugNote('[RND] Toggling Chat Tabs');
+  CurrentTab := Chatbox.GetActiveTab();
+  Self.RandomChatTab();
+  Wait(1500, 3000);
+  Chatbox.ClickTab(CurrentTab);
+end;
+
+procedure TAntiban.RandomChatTab();
+begin
+  DebugNote('[RND] Click in a random Chat Tab');
+  case Random(0, 5) of
+    0: Self.ChatAllTab();
+    1: Self.ChatGameTab();
+    2: Self.ChatPublicTab();
+    3: Self.ChatPrivateTab();
+    4: Self.ChatClanTab();
+    5: Self.ChatTradeTab();
+  end;
+end
+
+procedure TAntiban.ChatAllTab();
+begin
+  DebugNote('[RND] Clicking Chat All Tab');
+  Chatbox.ClickTab(ctAll);
+end;
+
+procedure TAntiban.ChatGameTab();
+begin
+  DebugNote('[RND] Clicking Chat Game Tab');
+  Chatbox.ClickTab(ctGame);
+end;
+
+procedure TAntiban.ChatPublicTab();
+begin
+  DebugNote('[RND] Clicking Chat Public Tab');
+  Chatbox.ClickTab(ctPublic);
+end;
+
+procedure TAntiban.ChatPrivateTab();
+begin
+  DebugNote('[RND] Clicking Chat Private Tab');
+  Chatbox.ClickTab(ctPrivate);
+end;
+
+procedure TAntiban.ChatClanTab();
+begin
+  DebugNote('[RND] Clicking Chat Clan Tab');
+  Chatbox.ClickTab(ctClan);
+end;
+
+procedure TAntiban.ChatTradeTab();
+begin
+  DebugNote('[RND] Clicking Chat Trade Tab');
+  Chatbox.ClickTab(ctTrade);
+end;
+
+
+// Zoom antibans
+procedure TAntiban.RandomZoom();
+var
+  P: TPoint;
+  B: TBox;
+begin
+  DebugNote('[RND] Random Zoom');
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  B := MainScreen.GetBounds();
+  P.X := RandomRange(B.X1, B.X2);
+  P.Y := RandomRange(B.Y1, B.Y2);
+  Mouse.Move(P);
+  P.X := RandomRange(B.X1, B.X2);
+  P.Y := RandomRange(B.Y1, B.Y2);
+  Mouse.Move(P);
+  Wait(1000,5000);
+  Mouse.Scroll(20, true);
+end;
+
+
+// Advanced antibans
+procedure TAntiban.CheckInfernalTool();
+begin
+  DebugNote('[RND] Check Infernal/Crystal tool charges');
+
+  if Wasp.IsInterfaceOpen() then
+    Wasp.CloseInterface();
+
+  if not Equipment.IsSlotUsed(4) then
+    Exit();
+
+  Equipment.MouseSlot(4, mouse_Move);
+
+  if not MainScreen.IsUpText(['Infernal', 'Crystal']) then
+    Exit();
+
+  if ChooseOption.Open() then
+    ChooseOption.Select(['Check']);
+
+  Chatbox.ScrollDown(5000);
+end;
+
+
+
+
+
+
+function Wasp.SetupAntiban(Skill: Int32; RunTime: Integer): Boolean;
+var
+  anti: TAntiban;
+begin
+  Antiban := anti;
+  srl.StartTime := GetTickCount();
+
+  Result := Antiban.Init(Skill, 4);
+
+
+
+  Antiban.AddTask([@Antiban.LoseFocusShort, ONE_MINUTE * 5, 0.33]);
+  Antiban.AddTask([@Antiban.RandomCompass, ONE_MINUTE * 10, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleBankTab, ONE_MINUTE * 14, 0.33]);
+  Antiban.AddTask([@Antiban.ChatScrolling, ONE_MINUTE * 18, 0.33]);
+  Antiban.AddTask([@Antiban.RandomMouseOffClient, ONE_MINUTE * 20, 0.33]);
+  if (Skill = SKILL_WOODCUTTING) or (Skill = SKILL_MINING) or (Skill = SKILL_FISHING) then
+    Antiban.AddTask([@Antiban.CheckInfernalTool, ONE_MINUTE * 25, 0.33]);
+  Antiban.AddTask([@Antiban.LoseFocus, ONE_MINUTE * 27, 0.33]);
+  Antiban.AddTask([@Antiban.CheckSkill, ONE_MINUTE * 30, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleChatTab, ONE_MINUTE * 33, 0.33]);
+  Antiban.AddTask([@Antiban.DoMiscStuff, ONE_MINUTE * 40, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleBankRearrangeButtons, ONE_MINUTE * 45, 0.33]);
+  Antiban.AddTask([@Antiban.OpenRandomTab, ONE_MINUTE * 50, 0.33]);
+  Antiban.AddTask([@Antiban.RandomRightClick, ONE_HOUR * 1, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleChatTab, ONE_HOUR * 2, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleRun, ONE_HOUR * 2, 0.33]);
+  Antiban.AddTask([@Antiban.CheckStats, ONE_HOUR * 3, 0.33]);
+
+
+  if (RunTime >= (3 * ONE_HOUR)) then
+    Antiban.AddBreak([30 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
+
+  if (RunTime >= (10 * ONE_HOUR)) then
+    Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.3]);
+
+  if (RunTime >= (30 * ONE_HOUR)) then
+    Antiban.AddBreak([12 * ONE_HOUR, 12 * ONE_HOUR, 0.35, 0.3]);
+end;

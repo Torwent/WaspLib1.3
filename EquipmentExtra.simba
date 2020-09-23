@@ -1,0 +1,7 @@
+function TRSEquipment.FindDTM(DTM: Integer): TIntArray;
+begin
+  if Self.Open() then
+    Result := srl.FindDTMInTBA(DTM, Self.FBoxes, 1);
+end;
+
+

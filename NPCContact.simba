@@ -1,0 +1,239 @@
+type
+  ENPC = (HONEST_JIMMY, BERT_THE_SANDMAN,
+          ADVISOR_GHRIM, DARK_MAGE, LANTHUS,
+          TURAEL, MAZCHNA, VANNAKA, CHAELDAR,
+          NIEVE, DURADEL, KRYSTILIA, KONAR,
+          MURPHY, CYRISUS, SMOGGY, GINEA, WATSON,
+          BARBARIAN_GUARD, RANDOM_NPC);
+
+  ENPCContactButton = (NPC_CONTACT_CLOSE);
+
+  ASWNPCContact = record(TInterfaceBase)
+    FNPCButtons: array [ENPC] of TBox;
+    FButtons: array [ENPCContactButton] of TBox;
+  end;
+
+var
+  NPCContact: ASWNPCContact;
+
+procedure ASWNPCContact.__Setup();
+
+  procedure SetNPCBounds(NPC: ENPC; X, Y, Width, Height: Int32);
+  begin
+    FNPCButtons[NPC] := [X, Y, X + Width, Y + Height];
+  end
+
+  procedure SetButtonBounds(Button: ENPCContactButton; X, Y, Width, Height: Int32);
+  begin
+    FButtons[Button] := [X, Y, X + Width, Y + Height];
+  end;
+
+begin
+  with Self do
+  begin
+    SetBounds(Box(10, 24, 509, 223));
+    SetName('NPCContact');
+    SetStatic(True);
+
+    with Self.GetBounds() do
+    begin
+      SetNPCBounds(HONEST_JIMMY,      X1 + 8,   Y1 + 40, 64, 124);
+      SetNPCBounds(BERT_THE_SANDMAN,  X1 + 75,  Y1 + 40, 64, 124);
+      SetNPCBounds(ADVISOR_GHRIM,     X1 + 142, Y1 + 40, 64, 124);
+      SetNPCBounds(DARK_MAGE,         X1 + 209, Y1 + 40, 64, 124);
+      SetNPCBounds(LANTHUS,           X1 + 276, Y1 + 40, 64, 124);
+      SetNPCBounds(TURAEL,            X1 + 343, Y1 + 40, 64, 124);
+      SetNPCBounds(MAZCHNA,           X1 + 410, Y1 + 40, 64, 124);
+
+      SetNPCBounds(VANNAKA,   X1 + 8,   Y1 + 165, 64, 124);
+      SetNPCBounds(CHAELDAR,  X1 + 75,  Y1 + 165, 64, 124);
+      SetNPCBounds(NIEVE,     X1 + 142, Y1 + 165, 64, 124);
+      SetNPCBounds(DURADEL,   X1 + 209, Y1 + 165, 64, 124);
+      SetNPCBounds(KRYSTILIA, X1 + 276, Y1 + 165, 64, 124);
+      SetNPCBounds(KONAR,     X1 + 343, Y1 + 165, 64, 124);
+      SetNPCBounds(MURPHY,    X1 + 410, Y1 + 165, 64, 124);
+
+      SetNPCBounds(CYRISUS,         X1 + 8, Y1 + 265, 64, 24);
+      SetNPCBounds(SMOGGY,          X1 + 75, Y1 + 265, 64, 24);
+      SetNPCBounds(GINEA,           X1 + 142, Y1 + 265, 64, 24);
+      SetNPCBounds(WATSON,          X1 + 209, Y1 + 265, 64, 24);
+      SetNPCBounds(BARBARIAN_GUARD, X1 + 276, Y1 + 265, 64, 24);
+      SetNPCBounds(RANDOM_NPC,      X1 + 343, Y1 + 265, 64, 24);
+
+      SetButtonBounds(NPC_CONTACT_CLOSE, X2 - 27, Y1 + 7, 20, 20);
+    end;
+  end;
+end;
+
+function ASWNPCContact._ExpectText(Text: String; Color: Int32 = $000000; Exact: Boolean = False; Time: Int32 = 6000): Boolean;
+var
+  TPA: TPointArray;
+  B: TBox;
+  T: UInt64 := GetTickCount() + Time;
+begin
+  repeat
+    if FindColors(TPA, Color, Chatbox.GetBounds()) then
+    begin
+      B := GetTPABounds(TPA);
+      B := B.Expand(2);
+
+      case Exact of
+        True:
+          if Text = OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+
+        False:
+          if Text in OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+      end;
+    end;
+
+    Wait(0, 1000, wdLeft);
+  until (GetTickCount() >= T);
+end;
+
+function ASWNPCContact.GetTitle(Color: Int32): String;
+var
+  B: TBox;
+begin
+  B := Self.GetBounds();
+  B.Y2 := B.Y1 + 35;
+
+  Result := GetTextAtEx(B, 1, 3, 3, Color, 0, 'UpChars07_s');
+end;
+
+function ASWNPCContact.IsUpText(SubStrs: TStringArray; WaitTime: UInt32 = 350): Boolean;
+var
+  TimeOut: UInt64;
+  Text: String;
+  i: Int32;
+begin
+  Result := False;
+  TimeOut := GetTickCount() + (WaitTime + Random(-20, 50));
+
+  while (TimeOut >= GetTickCount()) do
+  begin
+    Text := Self.GetUpText();
+    for i:=0 to High(SubStrs) do
+      if (SubStrs[i] = '') or (SubStrs[i] in Text) then
+        Exit(True);
+
+    Wait(Random(35, 75));
+  end;
+end;
+
+function ASWNPCContact.GetUpText(): String;
+const
+  OCR_RULES_UPTEXT: TCompareRules = [-1, 85, True, 85];
+var
+  client:T2DIntArray;
+  bmp:Int32;
+begin
+  bmp := BitmapFromClient(mainscreen.UpTextArea);
+  FastReplaceColor(bmp, 2070783, 3424329);
+  //FastReplaceColor(bmp, 0, 3424329);
+  //ShowBitmap(bmp);
+  client := BitmapToMatrix(bmp);
+  Result := OCR.RecognizeEx(client, OCR_RULES_UPTEXT, UpFont);
+  FreeBitmap(bmp);
+  {$IFDEF UPTEXT_DEBUG}
+    srl.Writeln('UpText found: ' + Result);
+  {$ENDIF}
+end;
+
+
+procedure ASWNPCContact.Debug();
+var
+  BMP, i, c: Integer;
+begin
+  BMP := BitmapFromClient(GetClientBounds());
+
+  c := 255;
+  for i:=0 to High(FNPCButtons) do
+  begin
+    DrawTPABitmap(BMP, EdgeFromBox(FNPCButtons[i]), c);
+    c := i + ((c * 128) and $FFFFFF);
+    WriteLn(c);
+  end;
+  for i:=0 to High(FButtons) do
+    DrawTPABitmap(BMP, EdgeFromBox(FButtons[i]), $00FF00);
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+function ASWNPCContact._Find(): Boolean;
+const
+  TEXT_COL = 2070783;
+var
+  p: TPoint;
+begin
+  Result := (srl.FindText(P, 'chara', 'UpChars07_s', 2070783, 0, Box(190, 30, 335, 50)));
+  if not Result then
+    Result := (srl.FindText(P, 'Choos', 'UpChars07_s', 2070783, 0, Box(190, 30, 335, 50)))
+end;
+
+function ASWNPCContact.IsOpen(WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self._Find()) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+
+function ASWNPCContact.Close(): Boolean;
+var
+  t: UInt64;
+begin
+  if (not Self.IsOpen()) then
+    Exit(True);
+
+  if (srl.CloseInterfacesWithEscape) then
+  begin
+    Keyboard.PressKey(VK_ESCAPE);
+    t := GetTickCount() + Random(4000, 5000);
+    while (t > GetTickCount()) do
+    begin
+      if (not Self.IsOpen()) then
+        Exit(True);
+    end;
+    srl.ToggleCloseInterfacesWithEscape(False);
+  end;
+
+  Self.ClickButton(NPC_CONTACT_CLOSE);
+  t := GetTickCount() + Random(4000, 5000);
+  while (t > GetTickCount()) do
+  begin
+    if (not Self.IsOpen()) then
+      Exit(True);
+  end;
+end;
+
+
+function ASWNPCContact.ClickNPC(npc: ENPC; clickType: Integer = mouse_Left): Boolean;
+begin
+  Result := Self.IsOpen();
+
+  if (Result) then
+    Mouse.Click(Self.FNPCButtons[npc], clickType);
+end;
+
+function ASWNPCContact.ClickButton(btn: ENPCContactButton; clickType: Integer = mouse_Left): Boolean;
+begin
+  Result := Self.IsOpen();
+
+  if (Result) then
+    Mouse.Click(Self.FButtons[btn], clickType);
+end;
+
+
+begin
+  NPCContact.__Setup();
+end;
