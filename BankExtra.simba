@@ -4,7 +4,7 @@ type
 
 var
   FTabs: array [EBankTab] of TBox;
-
+  BankBox: TBox = [73, 83, 456, 298];
 
 // BankScreen.Setup override to include bank tabs.
 procedure TRSBankScreen.__Setup(); override;
@@ -19,9 +19,6 @@ procedure TRSBankScreen.__Setup(); override;
     FTabs[Tab] := [X, Y, X + Width, Y + Height];
   end;
 
-
-var
-  SlotBounds: TBox = [73, 83, 456, 298];
 begin
   with Self do
   begin
@@ -29,7 +26,7 @@ begin
     SetName('Bankscreen');
     SetStatic(True);
 
-    FSlots := SlotBounds.Partition(6, 8);
+    FSlots := BankBox.Partition(6, 8);
     FSlots.ModifySide('x2', -16);
     FSlots.ModifySide('y2', -4);
 
@@ -216,58 +213,10 @@ begin
   Result := Tab = BankScreen.GetCurrentTab();
 end;
 
-// Flight function with some minor modifications
-function TRSBankScreen.ScrollToDTM(DTM: Integer): Boolean;
-var
-  t: UInt64;
-  BankBox: TBox;
-begin
-  if (Self.FindDTM(DTM) <> -1) then
-    Exit(True);
-
-  Self.OpenTab(TAB0);
-
-  BankBox := [73, 83, 456, 298];
-  Mouse.Move(BankBox);
-
-  t := GetTickCount() + Random(17000, 22000);
-  while (Self.FindDTM(DTM) = -1) do
-  begin
-    Mouse.Scroll(Random(2, 5), True);
-    if ((GetColor(486, 274) <> 1646629) and (t > GetTickCount())) then
-      if (Self.FindDTM(DTM) = -1) then
-        Exit(False)
-  end;
-  Exit(True);
-end;
-
-// Flight function with some minor modifications
-function TRSBankScreen.ScrollToDTMInTab(DTM: Integer; Tab: EBankTab): Boolean;
-var
-  t: UInt64;
-  bank_box: TBox;
-begin
-  if (Self.FindDTM(DTM) <> -1) then
-    Exit(True);
-
-  Self.OpenTab(Tab);
-
-  bank_box := [73, 83, 456, 298];
-  Mouse.Move(bank_box);
-  t := GetTickCount() + Random(17000, 22000);
-  while (Self.FindDTM(DTM) = -1) do
-  begin
-    Mouse.Scroll(Random(2, 5), True);
-    if ((GetColor(486, 274) <> 1646629) and (t > GetTickCount())) then
-      if (Self.FindDTM(DTM) = -1) then
-        Exit(False)
-  end;
-  Exit(True);
-end;
 
 
 
-
+// Counts how many bank tabs the bank has
 function TRSBankScreen.CountTabs(): Int32;
 var
   i     : Integer;
@@ -321,7 +270,109 @@ begin
       Exit(True);
 end;
 
+// Checks if the bankscreen is scrollable in the given direction
+function TRSBankScreen.CanScroll(Down: Boolean = True): Boolean;
+begin
+    Result := (Down and (GetColor(486, 276) = 1646629)) or
+              ((not Down) and (GetColor(486, 99) = 1646629));
+end;
 
+// Checks if the bankscreen is scrollable.
+function TRSBankScreen.CanScroll(): Boolean; overload;
+begin
+    Result := Self.CanScroll(True) or Self.CanScroll(False);
+end;
+
+// Finds the scroll bar position
+function TRSBankScreen.GetScrollPosition(): Int32;
+var
+  X, Y: Int32;
+begin
+  FindColor(X, Y, 4282469, 485, 99, 495, 276);
+  Result := Y;
+end;
+
+// Scrolls the bankscreen in the given direction
+function TRSBankScreen.Scroll(Down: Boolean = True; MinSteps: Int32 = 2; MaxSteps: Int32 = 5): Boolean;
+var
+  ScrollPosition: Int32;
+begin
+  if not Self.CanScroll(Down) then
+    Exit(True);
+  ScrollPosition := Self.GetScrollPosition();
+
+  Mouse.Move(BankBox);
+  Mouse.Scroll(Random(MinSteps, MaxSteps), Down);
+
+  Result := ScrollPosition <> Self.GetScrollPosition();
+end;
+
+//
+function TRSBankScreen.FindAndFixDTM(DTM: Integer): Int32;
+var
+  BankHalves: TBoxArray;
+  BottomBank: Boolean;
+  Slot, i: Int32;
+begin
+  if (SRL.FindDTMInTBA(DTM, [BankBox], 1) = []) then
+    Exit(-1);
+
+  Slot := Self.FindDTM(DTM);
+
+  if Slot > -1 then
+    Exit(Slot);
+
+
+  BankHalves := BankBox.Partition(2, 1);
+
+  // Checks in the DTM is in the lower side of the bank
+  BottomBank := SRL.FindDTMInTBA(DTM, [BankHalves[1]], 1) <> [];
+
+
+  for i := 0 to 4 do
+  begin
+    if not Self.CanScroll(BottomBank) then
+      Break;
+
+    Self.Scroll(BottomBank, 1, 1);
+    Slot := Self.FindDTM(DTM);
+
+    if Slot > -1 then
+      Exit(Slot);
+  end;
+
+  Result := -1;
+end;
+
+// Scrolls until it finds the DTM on the bankscreen
+function TRSBankScreen.ScrollToDTM(DTM: Integer; Tab: EBankTab = TAB0): Boolean;
+var
+  t: UInt64;
+begin
+
+  if Self.FindAndFixDTM(DTM) <> -1 then
+    Exit(True);
+
+  Self.OpenTab(Tab);
+
+  if Self.FindAndFixDTM(DTM) <> -1 then
+    Exit(True);
+
+  t := GetTickCount() + Random(7000, 10000);
+  repeat
+    if Self.FindAndFixDTM(DTM) <> -1 then
+      Exit(True);
+    if not Self.CanScroll(True) then
+      Exit(False);
+    Self.Scroll(True);
+  until (Self.FindAndFixDTM(DTM) <> -1) or (t < GetTickCount());
+
+  Result := Self.FindAndFixDTM(DTM) <> -1;
+end;
+
+
+// This next function is useless almost everytime except on the rare ocasion of 2 items that look the same.
+// The only example I know of is seaweed and giant seaweed but there's probably more.
 function TRSBankScreen.FindSecondDTM(DTM: Integer): Int32;
 var A: TIntArray;
 begin
@@ -412,6 +463,7 @@ begin
   Inventory.WaitCount(InvCount, 1200, __GT__);
 end;
 
+// Only useful with runelite menu entry swapper.
 function TRSBankScreen.ShiftWithdrawFromTab(Tab: EBankTab; Slot: Int32; Amount: Int32; UpText: TStringArray = []; WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
 begin
 
@@ -514,6 +566,7 @@ begin
 
 end;
 
+// See TRSBankScreen.FindSecondDTM
 function TRSBankScreen.WithdrawSecondDTM(DTM: Integer; ItemAmount: Int32; SubStrings: TStringArray; AmountBtn: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
 var
   i, item_slot, inv_count: Int32;
@@ -595,7 +648,7 @@ begin
 
 end;
 
-// Same as above but does it within a specified tab
+// Same as TRSBankScreen.WithdrawDTM but does it within a specified tab
 function TRSBankScreen.WithdrawDTMFromTab(Tab: EBankTab; DTM: Integer; ItemAmount: Int32 = -1; SubStrings: TStringArray; AmountBtn: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
 var
   i, item_slot, inv_count: Int32;
@@ -607,7 +660,7 @@ begin
   item_slot := Self.FindDTM(DTM);
   if (item_slot = -1) then
   begin
-    if Self.ScrollToDTMInTab(DTM, Tab) then
+    if Self.ScrollToDTM(DTM, Tab) then
       item_slot := Self.FindDTM(DTM)
     else
       Exit(False);
@@ -701,6 +754,7 @@ begin
 
 end;
 
+// See TRSBankScreen.FindSecondDTM
 function TRSBankScreen.WithdrawSecondDTMFromTab(Tab: EBankTab; DTM: Integer; ItemAmount: Int32 = 1337; SubStrings: TStringArray; AmountBtn: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
 var
   i, item_slot, inv_count: Int32;
@@ -711,7 +765,7 @@ begin
   item_slot := Self.FindSecondDTM(DTM);
   if (item_slot = -1) then
   begin
-    if Self.ScrollToDTMInTab(DTM, Tab) then
+    if Self.ScrollToDTM(DTM, Tab) then
       item_slot := Self.FindSecondDTM(DTM)
     else
       Exit(False);
