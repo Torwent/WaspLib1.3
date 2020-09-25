@@ -1,7 +1,7 @@
 function TRSXPBar.FindXPDrop(): Boolean;
 var
   XpTPA: TPointArray;
-  Box: TBox = [455, 5, 515, 205];
+  Box: TBox = [455, 50, 515, 205];
 begin
   if FindColors(XpTPA, 16777215, Box) and FindColors(XpTPA, 0, Box) then
     Exit(True)

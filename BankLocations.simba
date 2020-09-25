@@ -38,6 +38,102 @@ var
   ClosestBankColor: TCTS2Color;
 
 
+
+
+
+
+
+
+// Need to recheck, change or maybe even delete this next 4 functions...
+// It was experimental stuff.
+function Wasp.GetClosestFastBank(): TFastBankLocation;
+begin
+  if (WaspRSW.GetMyPos.DistanceTo(CraftGuild) <= 35) then
+    Exit(CraftGuildLoc)
+  else if (WaspRSW.GetMyPos.DistanceTo(CastleWars) <= 35) then
+    Exit(CastleWarsLoc)
+  else if (WaspRSW.GetMyPos.DistanceTo(Edgeville) <= 35) then
+    Exit(EdgevilleLoc)
+  else if (WaspRSW.GetMyPos.DistanceTo(GEBank1) <= 35) then
+    Exit(GEBankLoc)
+  else
+    Exit(UnknownLoc);
+end;
+
+function Wasp.AtToFastBank(): Boolean;
+begin
+  if Self.GetClosestFastBank() = UnknownLoc then
+    Exit(False)
+  else
+    Exit(True);
+end;
+
+function Wasp.WalkToFastBank(): Boolean;
+var
+  FastBank: TFastBankLocation;
+  BankTile: TPoint;
+begin
+  FastBank := Self.GetClosestFastBank();
+
+  case FastBank of
+    CraftGuildLoc: BankTile := CraftGuild;
+    CastleWarsLoc: BankTile := CastleWars;
+    EdgevilleLoc: BankTile := Edgeville;
+    GEBankLoc: BankTile := GEBank1;
+    UnknownLoc: Exit(False);
+  end;
+
+
+  if Self.IsTileVisible(BankTile) then
+    Exit(True)
+  else
+  begin
+    if WaspRSW.WalkPath([BankTile], 3) and Self.IsTileVisible(BankTile) then
+      Exit(True)
+    else
+      Exit(False);
+  end;
+end;
+
+function Wasp.FastBankTeleport(): Boolean;
+begin
+  if not AtToFastBank() then
+  begin
+    if not Self.HasItem(CraftCapeDTM) then
+    begin
+      if not Self.HasItem(DuelRingDTM) then
+        Exit(False);
+    end;
+
+    if ChooseOption.Open() then
+    begin
+      if ChooseOption.Select(['Teleport', 'Castle', 'Wars']) then
+      begin
+        if Self.GotTeleported() then
+          Exit(True)
+        else
+          Exit(False);
+      end
+      else if ChooseOption.Select(['Rub']) then
+      begin
+        if Chatbox.WaitQuery('Castle', 2000) then
+          Chatbox.ClickOption(['Castle'], [clBlack])
+        else
+          Exit(False);
+      end;
+    end;
+  end;
+
+  if not Wasp.WalkToFastBank() then
+    Exit(False);
+
+
+end;
+
+
+
+
+
 function WaspBanking.OpenBank(Tile: TPoint; Color: TCTS2Color): Boolean;
 begin
   Result := Obj.Click(Tile, Color, ['Bank', 'booth', 'chest'], True, 2, BankRSW);
