@@ -108,6 +108,8 @@ begin
   SRL.LoseFocus();
   Players.GetCurrent()^.Login();
   // Assuming you are using {$I SRL/utils/rsclient.simba} you shouldn't need to use SRL.SetFocus.
+  // This allows you to imitate a player focusing on something else while doing some afk task like
+  // fletching a full inventory of logs, which is very human like IMO.
 end;
 
 procedure TAntiban.RandomMouseOffClient();
@@ -141,7 +143,7 @@ begin
 end;
 
 
-// Bankscreen antibans
+// Bankscreen antibans, Need to test RandomItemMisc()
 procedure TAntiban.ToggleBankTab();
 var
   CurrentBankTab: EBankTab;
@@ -157,11 +159,14 @@ begin
 
   BankScreen.OpenTab(EBankTab(Random(0, BankScreen.CountTabs())));
 
-  // TODO: Add random item hovering.
-  Wait(1500, 2500);
+  if RandomBoolean(70) then
+    Wait(1500, 2500)
+  else
+    Self.RandomBankItemMisc();
 
   BankScreen.OpenTab(CurrentBankTab);
 end;
+
 
 procedure TAntiban.ToggleRandomBankButtons();
 begin
@@ -228,6 +233,64 @@ begin
 
   BankScreen.ClickButton(CurrentQuantity);
 end;
+
+
+procedure TAntiban.RandomBankItemMisc();
+begin
+  if RandomBoolean(75) then
+    Self.RandomBankItemHovering()
+  else
+    Self.RandomBankItemRightClick();
+end;
+
+procedure TAntiban.RandomBankItemHovering();
+var
+  Slot: UInt32;
+begin
+  DebugNote('[RND] Going to hover a random item in the bank');
+  if not BankScreen.IsOpen() then
+  begin
+    DebugNote('[RND] Bankscreen is not open.');
+    Exit();
+  end;
+
+  repeat
+    Slot := Random(0, 47);
+  until BankScreen.ItemIn(Slot);
+
+  Mouse.Move(BankScreen.GetSlotBox(Slot));
+  Wait(600, 2000);
+end;
+
+procedure TAntiban.RandomBankItemRightClick();
+var
+  Slot: UInt32;
+begin
+  DebugNote('[RND] Going to right click a random item in the bank');
+  if not BankScreen.IsOpen() then
+  begin
+    DebugNote('[RND] Bankscreen is not open.');
+    Exit();
+  end;
+
+  if ChooseOption.IsOpen() then
+    ChooseOption.Close();
+
+  repeat
+    Slot := Random(0, 47);
+  until BankScreen.ItemIn(Slot);
+
+  Mouse.Move(BankScreen.GetSlotBox(Slot));
+  ChooseOption.Open();
+  if RandomBoolean(70) then
+  begin
+    Wait(600, 1500);
+    ChooseOption.Close();
+  end
+  else
+    ChooseOption.Select('Examine');
+end;
+
 
 
 // Random cliking antibans
@@ -443,8 +506,9 @@ begin
 
 
   Antiban.AddTask([@Antiban.LoseFocusShort, ONE_MINUTE * 5, 0.33]);
+  Antiban.AddTask([@Antiban.RandomBankItemMisc, ONE_MINUTE * 7, 0.33]);
   Antiban.AddTask([@Antiban.RandomCompass, ONE_MINUTE * 10, 0.33]);
-  Antiban.AddTask([@Antiban.ToggleBankTab, ONE_MINUTE * 14, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleBankTab, ONE_MINUTE * 16, 0.33]);
   Antiban.AddTask([@Antiban.ChatScrolling, ONE_MINUTE * 18, 0.33]);
   Antiban.AddTask([@Antiban.RandomMouseOffClient, ONE_MINUTE * 20, 0.33]);
   if (Skill = SKILL_WOODCUTTING) or (Skill = SKILL_MINING) or (Skill = SKILL_FISHING) then
@@ -464,9 +528,9 @@ begin
   if (RunTime >= (3 * ONE_HOUR)) then
     Antiban.AddBreak([30 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
 
-  if (RunTime >= (10 * ONE_HOUR)) then
-    Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.3]);
+  if (RunTime >= (12 * ONE_HOUR)) then
+    Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.33]);
 
-  if (RunTime >= (30 * ONE_HOUR)) then
-    Antiban.AddBreak([12 * ONE_HOUR, 12 * ONE_HOUR, 0.35, 0.3]);
+  if (RunTime >= (1 * ONE_DAY)) then
+    Antiban.AddBreak([12 * ONE_HOUR, 12 * ONE_HOUR, 0.35, 0.33]);
 end;
