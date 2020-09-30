@@ -135,6 +135,42 @@ begin
   Self.FAmountButtons := ValidAmounts;
 end;
 
+// Need to incorporate this with the things above for large chatbox menus like glassblowing...
+//  if you are glassblowing incorporate this next function in your scriptfor now.
+
+{*
+procedure TRSChatboxUI._ResetBoxes(); override;
+var
+  EmptyTBoxArray: TBoxArray;
+  i: Int32;
+begin
+
+  FAmountsText := EmptyTBoxArray;
+  FOptionText := EmptyTBoxArray;
+  FAmountButtons := EmptyTBoxArray;
+  FOptionButtons := EmptyTBoxArray;
+
+  Self.FAmountsText += Box(471, 360, 493, 373);
+  for i := 3 downto 0 do
+    Self.FAmountsText += Box(331+35*i, 360, 348+35*i, 373);
+
+  for i := 0 to 7 do
+    Self.FOptionText += Box(12+62*i, 461, 70+62*i, 474);
+
+  Self.FAmountButtons += Box(465, 353, 499, 382);
+  for i := 3 downto 0 do
+    Self.FAmountButtons += Box(325+35*i, 353, 354+35*i, 382);
+
+  for i := 0 to 7 do
+    Self.FOptionButtons += Box(12+62*i, 389, 70+62*i, 460);
+  Self._FixAmounts();
+  Self._FixOptions();
+end;
+
+*}
+
+
+
 procedure TRSChatboxUI._FixOptions();
 var
   ValidOptionsText, ValidOptions: TBoxArray;

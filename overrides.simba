@@ -1,3 +1,40 @@
+// This is not working properly but it's an attempt at
+// detecting the lobby when it's in the new style.
+function TSRL.IsClientState(States: ERSClientStateSet): Boolean; override;
+
+  function FindText(Text: String; B: TBox;  Color: Int32 = $FFFFFF; Font: String = 'StatChars07'; minvspacing: Integer = 1): Boolean;
+  var
+    Search: String;
+  begin
+    if IsTargetValid() then
+    begin
+      Search := GetTextAtEx(B.X1, B.Y1, B.X2, B.Y2, minvspacing, 3, 3, Color, 0, Font);
+      Search := StringReplace(Search, 'I', 'l', [rfReplaceAll]); // `I` and `l` glyph are equal. We're searching for `l` so valid fix.
+      if (Search = Text) then
+        Exit(True);
+    end;
+  end
+
+begin
+  // LOGGED IN: `All` in `All` chat filter
+  if (csLoggedIn in States) and FindText('All', [27, 486, 37, 493]) then
+    Exit(True);
+
+  // LOGIN SCREEN: `Click` in `Click to switch` button
+  if (csLogin in States) and FindText('Click', [21, 483, 42, 490]) then
+    Exit(True);
+
+  // WORLD SWITCHER: `Cancel` in `Cancel` button
+  if (csWorldSwitcher in States) and FindText('Cancel', [717, 7, 748, 14]) then
+    Exit(True);
+
+  // LOBBY: `Never` in `Never tell anybody your password...`
+  if (csLobby in States) and (FindText('Never', [141, 106, 172, 115], $00FFFF, 'SmallChars07') or
+                              FindText('Welcome', [260, 15, 325, 36], 255, 'CharsNPC07', 0)) then
+    Exit(True);
+end;
+
+
 procedure TRSGametab.__Setup(); override;
 begin
   with Self do
@@ -49,7 +86,7 @@ var
   TPA: TPointArray;
 begin
   if not SRL.IsLoggedIn(10000) then
-    Players.LoginCurrent();
+    Players.GetCurrent()^.Login();
 
   if FindColorsTolerance(TPA, 1911089, Self.CompassInfo.Bounds, 25) then
     FilterPointsDist(TPA, 8, 15, M.X, M.Y);

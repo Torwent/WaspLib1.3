@@ -1,3 +1,4 @@
+// Lot's of this functions are based on Slacky's functions
 type
   TMSObject = record
     WorldLoc: TPointArray;  //loctions on the world map
@@ -9,20 +10,22 @@ type
 var
   Obj: TMSObject;
 
-function TMSObject.Find(DoSort: Boolean=True; Expand:Int32=0; Map: TRSWalker = WaspRSW): TRectArray;
+
+// Searches for a color in the MainScreen with the help of RSWalker.
+function TMSObject.Find(DoSort: Boolean = True; Expand: Int32 = 0; Map: TRSWalker = WaspRSW): TRectArray;
 var
-  loc, me: TPoint;
+  Loc, Me: TPoint;
   rect: TRectangle;
   locations, TPA: TPointArray;
   ATPA: T2DPointArray;
 begin
-  me := Map.GetMyPos();
+  Me := Map.GetMyPos();
   locations := Copy(Self.WorldLoc);
-  if DoSort then Locations.Sorted(me);
+  if DoSort then Locations.Sorted(Me);
 
-  for loc in Locations do
+  for Loc in Locations do
   begin
-    rect := Map.GetTileMSEx(me, loc, 1).Expand(Expand);
+    rect := Map.GetTileMSEx(Me, Loc, 1).Expand(Expand);
     if MainScreen.GetBounds.Contains(rect.Bounds) then
     begin
       if (srl.FindColors(TPA, Color, rect.Bounds) < Self.MinCount) then
@@ -41,6 +44,33 @@ begin
   end;
 end;
 
+// Same as above but without RSWalker... useful for some stuff and should be faster too.
+function TMSObject.FindMS(DoSort: Boolean = True; Expand:Int32 = 0): TRectArray; overload;
+var
+  Me: TPoint;
+  TPA: TPointArray;
+  Rect: TRectangle;
+  SearchBox: TBox;
+  ATPA: T2DPointArray;
+begin
+  Me := MainScreen.GetMiddle();
+
+  SearchBox := MainScreen.GetBounds();
+  Rect := SearchBox.ToRectangle();
+
+  srl.FindColors(TPA, Color, SearchBox);
+  MainScreen.FilterPlayerBox(TPA);
+
+  if DoSort then TPA.Sorted(Me);
+
+  TPA  := Rect.Filter(TPA);
+  ATPA := TPA.Cluster(8);
+  ATPA.SortByMiddle(Rect.Mean);
+  if ATPA then
+    Result += ATPA[0].MinAreaRect;
+end;
+
+// Searches for a color in a certain tile and clicks it if found.
 function TMSObject.Click(Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean=True): Boolean;
 var
   Rectangles: array of TRectangle;
@@ -90,6 +120,7 @@ begin
   end;
 end;
 
+// Searches for a color in several tiles and clicks it if found.
 function TMSObject.Click(Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean=True): Boolean; overload;
 var
   Rectangles: array of TRectangle;
