@@ -5,23 +5,12 @@ type
     Action: String;
   end;
 
-  TFastBankLocation = (CraftGuildLoc, CastleWarsLoc, EdgevilleLoc, GEBankLoc, UnknownLoc);
-
-
 var
   Wasp: TWasp;
+  WaspRSW: TRSWalker;
   CraftCapeDTM := DTMFromString('mggAAAHicY2NgYJjCxMAwA4inAXE/EM8C4qlA/Bgo9wqI3wHxeyC+B8SfgVhUUJAhxEGPIT3ACshjRMLkAAAg3Qr7');
   DuelRingDTM := DTMFromString('mggAAAHicY2NgYNjJxMCwHYh3APEBIN4ExAeBuIGRgaEDiLuAuBWIW4C4FojvHpQCYwYGRjgW7BNlIA8AAE1QC7M=');
   CloseButtonDTM := DTMFromString('mwQAAAHic42RgYHjGyMDwCIhfAfFDIH4JxG+B+A4UfwBicaA6ISiWBmIZIFYEYnkg5oViBgZGIjCVAQDySQj5');
-
-  WaspRSW: TRSWalker;
-
-  CraftGuild := Point(3554, 3328);
-  CastleWars := Point(1562, 4081);
-  Edgeville := Point(4157, 2465);
-  GEBank1 := Point(4466, 2532);
-  GEBank2 := Point(4466, 2532);
-
 
 function RandomBoolean(Probability: Int32 = 50): Boolean;
 begin

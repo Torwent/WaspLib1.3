@@ -19,21 +19,41 @@ var
 
   GEWestBank0 := Point(4459, 2487);
   GEWestBank1 := Point(4459, 2491);
-  GeWestBank := [GEWestBank0, GeWestBank1];
+  GEWestBank := [GEWestBank0, GeWestBank1];
 
   GEEastBank0 := Point(4476, 2488);
   GEEastBank1 := Point(4476, 2492);
   GEEastBank := [GEEastBank0, GEEastBank1];
 
   GEBanks := [GEWestBank0, GeWestBank1, GEEastBank0, GEEastBank1];
-  GEStructureColor := CTS2(3822173, 23, 0.06, 0.38);
+  GEStructureColor := CTS2(2971242, 23, 0.05, 1.10);
 
-  EdgeBank := [Point(4189, 2483)];
-  EdgeBankColor := CTS2(2646148, 21, 0.10, 2.25);
+  EdgeWestBank0 := Point(4189, 2492);
+  EdgeWestBank1 := Point(4189, 2483);
+  EdgeWestBank := [EdgeWestBank0, EdgeWestBank1];
 
-  CWBank := [Point(1586, 4115)];
+  EdgeNorthBank0 := Point(4201, 2476);
+  EdgeNorthBank1 := Point(4193, 2476);
+  EdgeNorthBank := [EdgeNorthBank0, EdgeNorthBank1];
+  EdgeBank := [EdgeWestBank0, EdgeWestBank1, EdgeNorthBank0, EdgeNorthBank0];
+
+  EdgeBankColor := CTS2(2711941, 22, 0.12, 2.21);
+  //EdgeBankColor :=  CTS2(3042698, 21, 0.04, 1.70);
+
+  CWBank := Point(1586, 4115);
   CWBankColor := CTS2(4475747, 15, 0.27, 1.09);
 
+  FWestBank0 := Point(3589, 2980);
+  FWestBank1 := Point(3593, 2980);
+  FWestBank2 := Point(3597, 2980);
+  FWestBank3 := Point(3601, 2980);
+  FWestBank4 := Point(3605, 2980);
+  FWestBank := [FWestBank0, FWestBank1, FWestBank2, FWestBank3, FWestBank4];
+  FWestBankColor := CTS2(3230556, 21, 0.09, 0.91);
+
+  //CraftGuild := Point(3554, 3328);
+
+  ClosestBankTile: TPoint;
   ClosestBankTiles: TPointArray;
   ClosestBankColor: TCTS2Color;
 
@@ -41,133 +61,63 @@ var
 
 
 
+// Real stuff starts here.
 
-
-
-// Need to recheck, change or maybe even delete this next 4 functions...
-// It was experimental stuff.
-function Wasp.GetClosestFastBank(): TFastBankLocation;
-begin
-  if (WaspRSW.GetMyPos.DistanceTo(CraftGuild) <= 35) then
-    Exit(CraftGuildLoc)
-  else if (WaspRSW.GetMyPos.DistanceTo(CastleWars) <= 35) then
-    Exit(CastleWarsLoc)
-  else if (WaspRSW.GetMyPos.DistanceTo(Edgeville) <= 35) then
-    Exit(EdgevilleLoc)
-  else if (WaspRSW.GetMyPos.DistanceTo(GEBank1) <= 35) then
-    Exit(GEBankLoc)
-  else
-    Exit(UnknownLoc);
-end;
-
-function Wasp.AtToFastBank(): Boolean;
-begin
-  if Self.GetClosestFastBank() = UnknownLoc then
-    Exit(False)
-  else
-    Exit(True);
-end;
-
-function Wasp.WalkToFastBank(): Boolean;
-var
-  FastBank: TFastBankLocation;
-  BankTile: TPoint;
-begin
-  FastBank := Self.GetClosestFastBank();
-
-  case FastBank of
-    CraftGuildLoc: BankTile := CraftGuild;
-    CastleWarsLoc: BankTile := CastleWars;
-    EdgevilleLoc: BankTile := Edgeville;
-    GEBankLoc: BankTile := GEBank1;
-    UnknownLoc: Exit(False);
-  end;
-
-
-  if Self.IsTileVisible(BankTile) then
-    Exit(True)
-  else
-  begin
-    if WaspRSW.WalkPath([BankTile], 3) and Self.IsTileVisible(BankTile) then
-      Exit(True)
-    else
-      Exit(False);
-  end;
-end;
-
-function Wasp.FastBankTeleport(): Boolean;
-begin
-  if not AtToFastBank() then
-  begin
-    if not Self.HasItem(CraftCapeDTM) then
-    begin
-      if not Self.HasItem(DuelRingDTM) then
-        Exit(False);
-    end;
-
-    if ChooseOption.Open() then
-    begin
-      if ChooseOption.Select(['Teleport', 'Castle', 'Wars']) then
-      begin
-        if Self.GotTeleported() then
-          Exit(True)
-        else
-          Exit(False);
-      end
-      else if ChooseOption.Select(['Rub']) then
-      begin
-        if Chatbox.WaitQuery('Castle', 2000) then
-          Chatbox.ClickOption(['Castle'], [clBlack])
-        else
-          Exit(False);
-      end;
-    end;
-  end;
-
-  if not Wasp.WalkToFastBank() then
-    Exit(False);
-
-
-end;
-
-
-
-
-
+// Tries to open a bank with the specified Color at the specified Tile.
+// Returns true if bankscreen is open.
 function WaspBanking.OpenBank(Tile: TPoint; Color: TCTS2Color): Boolean;
 begin
   Result := Obj.Click(Tile, Color, ['Bank', 'booth', 'chest'], True, 2, BankRSW);
 end;
 
+// Same as above for multiple tiles.
 function WaspBanking.OpenBank(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
 begin
   Result := Obj.Click(Tiles, Color, ['Bank', 'booth', 'chest'], True, 2, BankRSW);
 end;
 
+// Loads a smaller map in a new instance of RSW for faster execution.
+// Optionally you can set it to free the whole world map that is
+// automatically loaded with my lib on WaspRSW.
 procedure WaspBanking.LoadMap(DisableWorldWalker: Boolean = True);
 begin
   if Wasp.AtLocation(VWestBank, 100) then
   begin
     BankRSW.InitEx('world', [[3, 5], [3, 6]]);
     ClosestBankTiles := VWestBank;
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
     ClosestBankColor := VWBankColor;
   end
+
+  else if Wasp.AtLocation(FWestBank, 100) then
+  begin
+    BankRSW.InitEx('world', [[3, 4]]);
+    ClosestBankTiles := FWestBank;
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
+    ClosestBankColor := FWestBankColor;
+  end
+
   else if Wasp.AtLocation(EdgeBank, 100) then
   begin
     BankRSW.InitEx('world', [[3, 5]]);
-    ClosestBankTiles := EdgeBank;
-    ClosestBankColor := EdgeBankColor;
+    ClosestBankTiles := Self.GetClosestTile(EdgeNorthBank, EdgeWestBank);
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
+    ClosestBankColor := GEStructureColor;
   end
+
   else if Wasp.AtLocation(GEBanks, 100) then
   begin
     BankRSW.InitEx('world', [[3, 5], [3, 6]]);
-    ClosestBankTiles := GEBanks;
+    ClosestBankTiles := Self.GetClosestTile(GEWestBank, GEEastBank);
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
     ClosestBankColor := GEStructureColor;
   end
+
   else if Wasp.AtLocation(CWBank, 100) then
   begin
     BankRSW.InitEx('world', [[5, 1], [5, 2]]);
-    ClosestBankTiles := CWBank;
+    ClosestBankTiles := [CWBank];
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
     ClosestBankColor := CWBankColor;
   end;
 
@@ -175,60 +125,116 @@ begin
     WaspRSW.Free();
 end;
 
+// Same as above but uses only the already existing instance (WaspRSW) that my lib starts
+// I usually prefer the method above and most of the functions on this file assume BankRSW is properly setup.
 procedure Wasp.LoadSmallerMap();
 begin
   if Self.AtLocation(VWestBank, 100) then
   begin
     Self.LoadMapSlices('world', [[3, 5], [3, 6]]);
     ClosestBankTiles := VWestBank;
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
     ClosestBankColor := VWBankColor;
   end
-  else if Self.AtLocation(EdgeBank, 100) then
+
+  else if Self.AtLocation(EdgeWestBank, 100) then
   begin
     Self.LoadMapSlices('world', [[3, 5]]);
-    ClosestBankTiles := EdgeBank;
+    ClosestBankTiles := EdgeWestBank;
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
     ClosestBankColor := EdgeBankColor;
   end
+
   else if Self.AtLocation(GEBanks, 100) then
   begin
     Self.LoadMapSlices('world', [[3, 5], [3, 6]]);
-    ClosestBankTiles := GEBanks;
+    ClosestBankTiles := WaspBanking.GetClosestTile(GEWestBank, GEEastBank);
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
     ClosestBankColor := GEStructureColor;
   end
+
   else if Self.AtLocation(CWBank, 100) then
   begin
     Self.LoadMapSlices('world', [[5, 1], [5, 2]]);
-    ClosestBankTiles := CWBank;
+    ClosestBankTiles := [CWBank];
+    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
     ClosestBankColor := CWBankColor;
   end;
 end;
 
-function WaspBanking.AtLocation(Tile: TPoint; Distance: Int32 = 15): Boolean;
+// Checks if we are at specified Distance from a Tile.
+function WaspBanking.AtLocation(Tile: TPoint; Distance: Int32 = 30): Boolean;
 begin
   Result := (BankRSW.GetMyPos.DistanceTo(Tile) <= Distance);
 end;
 
-function WaspBanking.AtLocation(Tiles: TPointArray; Distance: Int32 = 15): Boolean; overload;
+// Same as above but with arrays. Checks if any of the Tiles in the array is within
+// the specified Distance and if yes returns True.
+function WaspBanking.AtLocation(Tiles: TPointArray; Distance: Int32 = 30): Boolean; overload;
 var
   i: Int32;
 begin
   Result := False
 
-  for i := 0 to (Length(Tiles) - 1) do
+  for i := 0 to High(Tiles) do
   begin
     if (BankRSW.GetMyPos.DistanceTo(Tiles[i]) <= Distance) then
       Exit(True);
   end;
 end;
 
+// Compares 2 Tiles with the Player position and returns the closest one.
+// If the Distance is the same for both, will return a random one.
+function WaspBanking.GetClosestTile(Tile1, Tile2: TPoint): TPoint;
+begin
+  if BankRSW.GetMyPos.DistanceTo(Tile1) = BankRSW.GetMyPos.DistanceTo(Tile2) then
+  begin
+     case Random(0,1) of
+      0: Result := Tile1;
+      1: Result := Tile2;
+     end;
+  end
+  else if BankRSW.GetMyPos.DistanceTo(Tile1) < BankRSW.GetMyPos.DistanceTo(Tile2) then
+    Result := Tile1
+  else if BankRSW.GetMyPos.DistanceTo(Tile1) < BankRSW.GetMyPos.DistanceTo(Tile2) then
+    Result := Tile2;
+end;
 
+// Same as above but with arrays. Finds the closes distance to the closest tile of each array
+// and returns the closest array. If the Distance is the same for both, will return a random one.
+function WaspBanking.GetClosestTile(TileArray1, TileArray2: TPointArray): TPointArray; overload;
+var
+  i: Int32;
+  Distances1, Distances2: TExtendedArray;
+begin
 
+  for i := 0 to High(TileArray1) do
+    Distances1 += BankRSW.GetMyPos.DistanceTo(TileArray1[i]);
+
+  for i := 0 to High(TileArray2) do
+    Distances2 += BankRSW.GetMyPos.DistanceTo(TileArray2[i]);
+
+  if Distances1.Min() = Distances2.Min() then
+  begin
+     case Random(0,1) of
+      0: Result := TileArray1;
+      1: Result := TileArray2;
+     end;
+  end
+  else if Distances1.Min() < Distances2.Min() then
+    Result := TileArray1
+  else if Distances1.Min() > Distances2.Min() then
+    Result := TileArray2;
+end;
+
+// Opens the closest bank supported by WaspBanking.
+// Use this in your script to open a bank with a single line of code.
 function WaspBanking.OpenClosestBank(): Boolean;
 begin
-  if not Self.AtLocation(ClosestBankTiles) then
+  if not Self.AtLocation(ClosestBankTile) then
     Exit(False);
 
-  Result := Self.OpenBank(ClosestBankTiles, ClosestBankColor);
+  Result := Self.OpenBank(ClosestBankTile, ClosestBankColor);
 end;
 
 

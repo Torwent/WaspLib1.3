@@ -45,7 +45,7 @@ begin
 end;
 
 // Same as above but without RSWalker... useful for some stuff and should be faster too.
-function TMSObject.FindMS(DoSort: Boolean = True; Expand:Int32 = 0): TRectArray; overload;
+function TMSObject.FindMS(DoSort: Boolean = True): TRectArray; overload;
 var
   Me: TPoint;
   TPA: TPointArray;
@@ -83,18 +83,16 @@ begin
 
   if not Wasp.IsTileVisible(Tile) then
     Exit(False);
-
   for i := 1 to Attempts do
   begin
     Obj := [[Tile], Color, 200, 8];
 
     t := GetTickCount() + 3000;
     repeat
-      Rectangles := obj.Find(DoSort, 2, Map);
+      Rectangles := obj.Find(DoSort, 20, Map);
       if (GetTickCount() >= t) then
         Exit(False);
     until Rectangles;
-
     Rectangle := Rectangles[Random(0, (Length(Rectangles)-1))];
 
     mouse.Move(SRL.RandomPoint(Rectangle));
@@ -106,7 +104,8 @@ begin
         if not HasInterface then
           Exit(True);
 
-        t := GetTickCount() + Random(600, 1200);
+        Minimap.WaitPlayerMoving(False, 3000);
+        t := GetTickCount() + 4000;
         repeat
           if Wasp.IsInterfaceOpen() then
             Exit(True)
@@ -133,14 +132,13 @@ begin
 
   if not Wasp.AnyTileVisible(Tiles, Map) then
     Exit(False);
-
   for i := 1 to Attempts do
   begin
     Obj := [Tiles, Color, 200, 8];
 
     t := GetTickCount() + 3000;
     repeat
-      Rectangles := obj.Find(DoSort, 2, Map);
+      Rectangles := obj.Find(DoSort, 20, Map);
       if (GetTickCount() >= t) then
         Exit(False);
     until Rectangles;
@@ -156,6 +154,7 @@ begin
         if not HasInterface then
           Exit(True);
 
+        Minimap.WaitPlayerMoving(False, 3000);
         t := GetTickCount() + 4000;
         repeat
           if Wasp.IsInterfaceOpen() then
