@@ -38,7 +38,6 @@ var
   EdgeBank := [EdgeWestBank0, EdgeWestBank1, EdgeNorthBank0, EdgeNorthBank0];
 
   EdgeBankColor := CTS2(2711941, 22, 0.12, 2.21);
-  //EdgeBankColor :=  CTS2(3042698, 21, 0.04, 1.70);
 
   CWBank := Point(1586, 4115);
   CWBankColor := CTS2(4475747, 15, 0.27, 1.09);
@@ -51,17 +50,12 @@ var
   FWestBank := [FWestBank0, FWestBank1, FWestBank2, FWestBank3, FWestBank4];
   FWestBankColor := CTS2(3230556, 21, 0.09, 0.91);
 
-  //CraftGuild := Point(3554, 3328);
+  CraftGuildBank := Point(3554, 3328);
+  CraftGuildBankColor := CTS2(4475747, 15, 0.27, 1.09); // THIS IS JUST A PLACEHOLDER. NEEDS PROPER VALUES FIRST.
 
   ClosestBankTile: TPoint;
   ClosestBankTiles: TPointArray;
   ClosestBankColor: TCTS2Color;
-
-
-
-
-
-// Real stuff starts here.
 
 // Tries to open a bank with the specified Color at the specified Tile.
 // Returns true if bankscreen is open.
@@ -97,6 +91,14 @@ begin
     ClosestBankColor := FWestBankColor;
   end
 
+  else if Wasp.AtLocation(CraftGuildBank, 100) then
+  begin
+    BankRSW.InitEx('world', [[4, 4]]);
+    ClosestBankTiles := [CraftGuildBank];
+    ClosestBankTile := CraftGuildBank;
+    ClosestBankColor := CraftGuildBankColor;
+  end
+
   else if Wasp.AtLocation(EdgeBank, 100) then
   begin
     BankRSW.InitEx('world', [[3, 5]]);
@@ -117,7 +119,7 @@ begin
   begin
     BankRSW.InitEx('world', [[5, 1], [5, 2]]);
     ClosestBankTiles := [CWBank];
-    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
+    ClosestBankTile := CWBank;
     ClosestBankColor := CWBankColor;
   end;
 

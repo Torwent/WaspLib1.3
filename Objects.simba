@@ -71,7 +71,7 @@ begin
 end;
 
 // Searches for a color in a certain tile and clicks it if found.
-function TMSObject.Click(Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean=True): Boolean;
+function TMSObject.Click(Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean = True): Boolean;
 var
   Rectangles: array of TRectangle;
   Rectangle: TRectangle;
@@ -80,8 +80,7 @@ var
 begin
 
   Result := False;
-
-  if not Wasp.IsTileVisible(Tile) then
+  if not Wasp.IsTileVisible(Tile, Map) then
     Exit(False);
   for i := 1 to Attempts do
   begin
@@ -93,7 +92,7 @@ begin
       if (GetTickCount() >= t) then
         Exit(False);
     until Rectangles;
-    Rectangle := Rectangles[Random(0, (Length(Rectangles)-1))];
+    Rectangle := Rectangles[Random(0, High(Rectangles))];
 
     mouse.Move(SRL.RandomPoint(Rectangle));
 
@@ -143,7 +142,7 @@ begin
         Exit(False);
     until Rectangles;
 
-    Rectangle := Rectangles[Random(0, (Length(Rectangles)-1))];
+    Rectangle := Rectangles[Random(0, High(Rectangles))];
 
     mouse.Move(SRL.RandomPoint(Rectangle));
 
@@ -169,3 +168,84 @@ begin
   end;
 end;
 
+procedure TMSObject.Debug(Map: TRSWalker = WaspRSW; Tile: TPoint; Color: TCTS2Color; DoSort: Boolean = True);
+var
+  BMP, i: Integer;
+  TileBox, RectangleBox: TBox;
+  Rectangles: array of TRectangle;
+  RectanglesTPA: TPointArray;
+  t: UInt64;
+begin
+
+  if not Wasp.IsTileVisible(Tile, Map) then
+    Exit();
+
+  Obj := [[Tile], Color, 200, 8];
+
+  t := GetTickCount() + 3000;
+  repeat
+    Rectangles := obj.Find(DoSort, 15, Map);
+    if (GetTickCount() >= t) then
+      Exit();
+  until Rectangles;
+
+  for i := 0 to High(Rectangles) do
+  begin
+    RectangleBox := Rectangles[i].Bounds();
+    RectanglesTPA += EdgeFromBox(RectangleBox);
+  end;
+
+  BMP := BitmapFromClient(GetClientBounds());
+  TileBox := Map.GetTileMS(Tile).Bounds();
+
+  DrawTPABitmap(BMP, EdgeFromBox(TileBox), 255);
+
+  DrawTPABitmap(BMP, RectanglesTPA, 0);
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+// NEED TO FIX THIS
+procedure TMSObject.Debug(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; DoSort: Boolean = True); overload;
+var
+  BMP, i: Integer;
+  TileBox, RectangleBox: TBox;
+  Rectangles: array of TRectangle;
+  RectanglesTPA: TPointArray;
+  t: UInt64;
+begin
+  if not Wasp.AnyTileVisible(Tiles, Map) then
+    Exit();
+
+  BMP := BitmapFromClient(GetClientBounds());
+
+  for i:=0 to High(Tiles) do
+  begin
+
+    Obj := [[Tiles[i]], Color, 200, 8];
+    t := GetTickCount() + 3000;
+    repeat
+      Rectangles := obj.Find(DoSort, 15, Map);
+      if (GetTickCount() >= t) then
+        Exit();
+    until Rectangles;
+
+    TileBox := Map.GetTileMS(Tiles[i]).Bounds();
+
+    for i := 0 to High(Rectangles) do
+    begin
+      RectangleBox := Rectangles[i].Bounds();
+      RectanglesTPA += EdgeFromBox(RectangleBox);
+    end;
+
+
+    DrawTPABitmap(BMP, EdgeFromBox(TileBox), 255);
+    DrawTPABitmap(BMP, RectanglesTPA, 0);
+
+
+  end;
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
