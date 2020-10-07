@@ -1,0 +1,190 @@
+// This entire file was rushed but should work I think...
+// Would like to add some stuff in the future like finding which skill is active at the moment if any for example.
+
+
+type
+  ESkillButton = (sbAttack, sbStrength, sbRanged, sbMagic, sbDefence,
+                  sbHitpoints, sbPrayer, sbAgility, sbHerblore, sbThieving, sbCrafting,
+                  sbRunecrafting, sbSlayer, sbFarming, sbMining, sbSmithing, sbFishing,
+                  sbCooking, sbFiremaking, sbWoodcutting, sbFletching, sbConstruction, sbHunter);
+  ELampButton = (lbConfirm, lbClose);
+
+  TLampInterface = record(TInterfaceBase)
+    FSkillButtons: array [ESkillButton] of TBox;
+    FButtons: array [ELampButton] of TBox;
+  end;
+
+var
+  LampInterface: TLampInterface;
+
+procedure LampInterface.__Setup();
+var
+  i: Int32;
+
+  procedure SetSkillButtonBounds(Skill: ESkillButton; X, Y, Width, Height: Int32);
+  begin
+    FSkillButtons[Skill] := [X, Y, X + Width, Y + Height];
+  end
+
+  procedure SetLampButtonBounds(Button: ELampButton; X, Y, X2, Y2: Int32);
+  begin
+    FButtons[Button] := [X, Y, X2, Y2];
+  end;
+
+begin
+  with Self do
+  begin
+    SetBounds(Box(4, 4, 515, 337));
+    SetName('XpLamp');
+    SetStatic(True);
+
+    with Self.GetBounds() do
+    begin
+      for i := 0 to 5 do
+        SetSkillButtonBounds(ESkillButton(i), (X1 + 182 + (32 * i)), Y1 + 126, 24, 24);
+
+      for i := 0 to 5 do
+        SetSkillButtonBounds(ESkillButton(i+5), (X1 + 167 + (32 * i)),   Y1 + 156, 24, 24);
+      for i := 0 to 5 do
+        SetSkillButtonBounds(ESkillButton(i+11), (X1 + 167 + (32 * i)),   Y1 + 184, 24, 24);
+      for i := 0 to 5 do
+        SetSkillButtonBounds(ESkillButton(i+17), (X1 + 167 + (32 * i)),   Y1 + 212, 24, 24);
+
+      SetLampButtonBounds(lbConfirm, 214, 270, 306, 283);
+      SetLampButtonBounds(lbClose, 482, 24, 507, 45);
+    end;
+  end;
+end;
+
+function LampInterface._ExpectText(Text: String; Color: Int32 = 10066329; Exact: Boolean = False; Time: Int32 = 6000): Boolean;
+var
+  TPA: TPointArray;
+  B: TBox;
+  T: UInt64 := GetTickCount() + Time;
+begin
+  repeat
+    if FindColors(TPA, Color, Chatbox.GetBounds()) then
+    begin
+      B := GetTPABounds(TPA);
+      B := B.Expand(2);
+
+      case Exact of
+        True:
+          if Text = OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+
+        False:
+          if Text in OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+      end;
+    end;
+
+    Wait(0, 1000, wdLeft);
+  until (GetTickCount() >= T);
+end;
+
+function LampInterface.GetTitle(Color: Int32): String;
+var
+  B: TBox;
+begin
+  B := Self.GetBounds();
+  B.Y2 := B.Y1 + 35;
+
+  Result := GetTextAtEx(B, 1, 3, 3, Color, 0, 'UpChars07_s');
+end;
+
+procedure LampInterface.Debug();
+var
+  BMP, i, c: Integer;
+begin
+  BMP := BitmapFromClient(GetClientBounds());
+
+  c := 255;
+  for i:=0 to High(FSkillButtons) do
+  begin
+    DrawTPABitmap(BMP, EdgeFromBox(FSkillButtons[i]), c);
+    c := i + ((c * 128) and $FFFFFF);
+    WriteLn(c);
+  end;
+  for i:=0 to High(FButtons) do
+    DrawTPABitmap(BMP, EdgeFromBox(FButtons[i]), $00FF00);
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+function LampInterface._Find(): Boolean;
+const
+  TEXT_COL = 10066329;
+var
+  p: TPoint;
+begin
+  Result := (srl.FindText(P, 'Choos', 'UpChars07_s', TEXT_COL, 0, Box(116, 82, 165, 95)));
+  if not Result then
+    Result := (srl.FindText(P, 'stat', 'UpChars07_s', TEXT_COL, 0, Box(194, 82, 223, 95)))
+end;
+
+function LampInterface.IsOpen(WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self._Find()) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+
+function LampInterface.Close(): Boolean;
+var
+  t: UInt64;
+begin
+  if (not Self.IsOpen()) then
+    Exit(True);
+
+  if (srl.CloseInterfacesWithEscape) then
+  begin
+    Keyboard.PressKey(VK_ESCAPE);
+    t := GetTickCount() + Random(4000, 5000);
+    while (t > GetTickCount()) do
+    begin
+      if (not Self.IsOpen()) then
+        Exit(True);
+    end;
+    srl.ToggleCloseInterfacesWithEscape(False);
+  end;
+
+  Self.ClickButton(lbClose);
+  t := GetTickCount() + Random(4000, 5000);
+  while (t > GetTickCount()) do
+  begin
+    if (not Self.IsOpen()) then
+      Exit(True);
+  end;
+end;
+
+
+function LampInterface.ClickSkill(Skill: ESkillButton; clickType: Integer = mouse_Left): Boolean;
+begin
+  Result := Self.IsOpen();
+
+  if (Result) then
+    Mouse.Click(Self.FSkillButtons[Skill], clickType);
+end;
+
+function LampInterface.ClickButton(btn: ELampButton; clickType: Integer = mouse_Left): Boolean;
+begin
+  Result := Self.IsOpen();
+
+  if (Result) then
+    Mouse.Click(Self.FButtons[btn], clickType);
+end;
+
+
+begin
+  LampInterface.__Setup();
+end;

@@ -1,0 +1,89 @@
+type
+  TWaspWalker = record
+    Position: TPoint;
+  end;
+
+var
+  WaspWalker: TWaspWalker;
+
+function WaspWalker.AtLocation(Map: TRSWalker; Tile: TPoint; Distance: Int32 = 15): Boolean;
+begin
+  Result := Map.GetMyPos.DistanceTo(Tile) <= Distance;
+end;
+
+function WaspWalker.AtLocation(Map: TRSWalker; TilesArray: TPointArray; Distance: Int32 = 15): Boolean; overload;
+var
+  i: Int32;
+begin
+  Result := False
+
+  for i := 0 to High(TilesArray) do
+  begin
+    if (Map.GetMyPos.DistanceTo(TilesArray[i]) <= Distance) then
+      Exit(True);
+  end;
+end;
+
+function WaspWalker.AtLocation(Map: TRSWalker; TilesArrayArray: T2DPointArray; Distance: Int32 = 15): Boolean; overload;
+var
+  Idx, i: Int32;
+begin
+  Result := False
+
+  for Idx := 0 to High(TilesArrayArray) do
+    for i := 0 to High(TilesArrayArray[Idx]) do
+      if (Map.GetMyPos.DistanceTo(TilesArrayArray[Idx][i]) <= Distance) then
+        Exit(True);
+
+end;
+
+// Compares Tiles with the Player position and returns the closest one.
+// If the Distance is the same for more than one, a random one will be returned.
+function WaspWalker.GetClosestTile(Map: TRSWalker = WaspRSW; Tiles: TPointArray): TPoint;
+var
+  i: Int32;
+  ClosestDistances: TIntArray;
+  Distances: TExtendedArray;
+begin
+  for i := 0 to High(Tiles) do
+    Distances += Map.GetMyPos.DistanceTo(Tiles[i]);
+
+   ClosestDistances := Distances.FindAll(Distances.Min());
+
+  Result := Tiles[ClosestDistances[Random(0, High(ClosestDistances))]];
+end;
+
+// Same as above but with ATPAs. Finds the closes distance to the closest tile of each array
+// and returns the closest array. If the Distance is the same for more than one, will return a random one.
+function WaspWalker.GetClosestTile(Map: TRSWalker = WaspRSW; TilesArray: T2DPointArray): TPointArray; overload;
+var
+  Idx, i: Int32;
+  ClosestDistPos: TIntArray;
+  Distances, ClosestDistances: TExtendedArray;
+begin
+
+  for Idx := 0 to High(TilesArray) do
+  begin
+    for i := 0 to High(TilesArray[Idx]) do
+      Distances += Map.GetMyPos.DistanceTo(TilesArray[Idx][i]);
+    ClosestDistances += Distances.Min();
+    Distances := [];
+  end;
+
+  ClosestDistPos := ClosestDistances.FindAll(ClosestDistances.Min());
+
+  Result := TilesArray[ClosestDistPos[Random(0, High(ClosestDistPos))]];
+end;
+
+
+function WaspWalker.WalkToTile(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 10): Boolean;
+begin
+
+  if Self.AtLocation(Map, Tile, Distance) then
+    Exit(True);
+
+  if ((Minimap.GetRunEnergy() > Random(40, 60)) and (not Minimap.isRunEnabled())) then
+    Minimap.ToggleRun(True);
+
+  Result := Map.WalkPath([Tile], 3);
+end;

@@ -75,12 +75,12 @@ begin
   until (GetTickCount() >= t);
 end;
 
-function Wasp.AtLocation(Tile: TPoint; Distance: Int32 = 15): Boolean;
+function Wasp.AtLocation(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 15): Boolean;
 begin
-  Result := (WaspRSW.GetMyPos.DistanceTo(Tile) <= Distance);
+  Result := (Map.GetMyPos.DistanceTo(Tile) <= Distance);
 end;
 
-function Wasp.AtLocation(Tiles: TPointArray; Distance: Int32 = 15): Boolean; overload;
+function Wasp.AtLocation(Map: TRSWalker = WaspRSW; Tiles: TPointArray; Distance: Int32 = 15): Boolean; overload;
 var
   i: Int32;
 begin
@@ -88,24 +88,24 @@ begin
 
   for i := 0 to (Length(Tiles) - 1) do
   begin
-    if (WaspRSW.GetMyPos.DistanceTo(Tiles[i]) <= Distance) then
+    if (Map.GetMyPos.DistanceTo(Tiles[i]) <= Distance) then
       Exit(True);
   end;
 end;
 
-function Wasp.IsTileVisible(Tile: TPoint; Map: TRSWalker = WaspRSW): Boolean;
+function Wasp.IsTileVisible(Map: TRSWalker = WaspRSW; Tile: TPoint): Boolean;
 begin
   Result := Mainscreen.FBounds.Contains(Map.GetTileMS(Tile));
 end;
 
-function Wasp.AnyTileVisible(Tiles: TPointArray; Map: TRSWalker = WaspRSW): Boolean;
+function Wasp.AnyTileVisible(Map: TRSWalker = WaspRSW; Tiles: TPointArray): Boolean;
 var
   i: Int32;
 begin
   Result := False;
   for i := 0 to (Length(Tiles) - 1) do
   begin
-    if Wasp.IsTileVisible(Tiles[i], Map) then
+    if Wasp.IsTileVisible(Map, Tiles[i]) then
       Exit(True);
   end;
 end;

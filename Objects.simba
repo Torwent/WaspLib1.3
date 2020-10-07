@@ -80,7 +80,7 @@ var
 begin
 
   Result := False;
-  if not Wasp.IsTileVisible(Tile, Map) then
+  if not Wasp.IsTileVisible(Map, Tile) then
     Exit(False);
   for i := 1 to Attempts do
   begin
@@ -129,7 +129,7 @@ begin
 
   Result := False;
 
-  if not Wasp.AnyTileVisible(Tiles, Map) then
+  if not Wasp.AnyTileVisible(Map, Tiles) then
     Exit(False);
   for i := 1 to Attempts do
   begin
@@ -177,7 +177,7 @@ var
   t: UInt64;
 begin
 
-  if not Wasp.IsTileVisible(Tile, Map) then
+  if not Wasp.IsTileVisible(Map, Tile) then
     Exit();
 
   Obj := [[Tile], Color, 200, 8];
@@ -215,7 +215,7 @@ var
   RectanglesTPA: TPointArray;
   t: UInt64;
 begin
-  if not Wasp.AnyTileVisible(Tiles, Map) then
+  if not Wasp.AnyTileVisible(Map, Tiles) then
     Exit();
 
   BMP := BitmapFromClient(GetClientBounds());

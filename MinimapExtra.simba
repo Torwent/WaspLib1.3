@@ -24,6 +24,12 @@ begin
     Result := not srl.WaitColorCount([9278355, 21], b, @GreaterThan, 15, Time);
 end;
 
+function TRSMinimap.CanSpec(MinimumSpec: Int32 = 100): Boolean;
+begin
+  Result := Minimap.WeaponHasSpecialAttack() and (Minimap.GetSpecialAttack() = MinimumSpec);
+end;
+
+
 (*
 Minimap.ToggleSpecialAttack
 ~~~~~~~~~~~~~~~~~~~~~

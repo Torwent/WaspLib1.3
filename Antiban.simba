@@ -443,7 +443,6 @@ begin
   Chatbox.ClickTab(ctTrade);
 end;
 
-
 // Zoom antibans
 procedure TAntiban.RandomZoom();
 var
@@ -501,8 +500,6 @@ begin
 
   Result := Antiban.Init(Skills, 4);
 
-
-
   Antiban.AddTask([@Antiban.LoseFocusShort, ONE_MINUTE * 5, 0.33]);
   Antiban.AddTask([@Antiban.RandomBankItemMisc, ONE_MINUTE * 7, 0.33]);
   Antiban.AddTask([@Antiban.RandomCompass, ONE_MINUTE * 10, 0.33]);
@@ -523,9 +520,8 @@ begin
   Antiban.AddTask([@Antiban.ToggleRun, ONE_HOUR * 2, 0.33]);
   Antiban.AddTask([@Antiban.CheckStats, ONE_HOUR * 3, 0.33]);
 
-
   if (RunTime >= (3 * ONE_HOUR)) then
-    Antiban.AddBreak([30 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
+    Antiban.AddBreak([45 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
 
   if (RunTime >= (12 * ONE_HOUR)) then
     Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.33]);
@@ -542,8 +538,6 @@ begin
   srl.StartTime := GetTickCount();
 
   Result := Antiban.Init(Skill, 4);
-
-
 
   Antiban.AddTask([@Antiban.LoseFocusShort, ONE_MINUTE * 5, 0.33]);
   Antiban.AddTask([@Antiban.RandomBankItemMisc, ONE_MINUTE * 7, 0.33]);
@@ -566,7 +560,7 @@ begin
 
 
   if (RunTime >= (3 * ONE_HOUR)) then
-    Antiban.AddBreak([30 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
+    Antiban.AddBreak([45 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
 
   if (RunTime >= (12 * ONE_HOUR)) then
     Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.33]);
