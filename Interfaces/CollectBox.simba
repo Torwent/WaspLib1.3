@@ -1,0 +1,282 @@
+// This entire file was rushed but should work I think...
+// Would like to add some stuff in the future like finding which skill is active at the moment if any for example.
+
+
+type
+  ECollectBoxSlot = (cbSlot0, cbSlot1, cbSlot2, cbSlot3,
+                     cbSlot4, cbSlot5, cbSlot6, cbSlot7);
+  ECollectBoxExchange = (cbeItem, cbeMoney);
+  ECollectBoxButton = (cbbInventory, cbbBank, cbbClose);
+
+  TCollectBox = record(TInterfaceBase)
+    FSlots: array [ECollectBoxSlot] of TBoxArray;
+    FButtons: array [ECollectBoxButton] of TBox;
+  end;
+
+var
+  CollectBox: TCollectBox;
+
+procedure CollectBox.__Setup();
+var
+  i: Int32;
+
+  procedure SetSlotBounds(Slot: ECollectBoxSlot; X, Y: Int32);
+  var
+    SlotBounds, ItemBounds, MoneyBounds: TBox;
+  begin
+    SlotBounds := [X, Y, X + 99, Y + 73];
+    ItemBounds := [X + 10, Y + 32, X + 45, Y + 63];
+    MoneyBounds := [X + 54, Y + 32, X + 89, Y + 63];
+
+    FSlots[Slot] := [SlotBounds, ItemBounds, MoneyBounds];
+  end
+
+  procedure SetButtonBounds(Button: ECollectBoxButton; X, Y, X2, Y2: Int32);
+  begin
+    FButtons[Button] := [X, Y, X2, Y2];
+  end;
+
+begin
+  with Self do
+  begin
+    SetBounds(Box(31, 46, 490, 293));
+    SetName('Collection Box');
+    SetStatic(True);
+
+    with Self.GetBounds() do
+    begin
+      for i := 0 to 3 do
+        SetSlotBounds(ECollectBoxSlot(i), (X1 + 14 + (110 * i)), Y1 + 45);
+      for i := 4 to 7 do
+        SetSlotBounds(ECollectBoxSlot(i), (X1 + 14 + (110 * (i - 4))), Y1 + 129);
+
+      SetButtonBounds(cbbInventory, 170, 259, 254, 278);
+      SetButtonBounds(cbbBank, 265, 259, 349, 278);
+      SetButtonBounds(cbbClose, 461, 53, 486, 75);
+
+    end;
+  end;
+end;
+
+function CollectBox._ExpectText(Text: String; Color: Int32 = 10066329; Exact: Boolean = False; Time: Int32 = 6000): Boolean;
+var
+  TPA: TPointArray;
+  B: TBox;
+  T: UInt64 := GetTickCount() + Time;
+begin
+  repeat
+    if FindColors(TPA, Color, Chatbox.GetBounds()) then
+    begin
+      B := GetTPABounds(TPA);
+      B := B.Expand(2);
+
+      case Exact of
+        True:
+          if Text = OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+
+        False:
+          if Text in OCR.Recognize(B, FontSetting(Color), UpFont) then
+            Exit(True);
+      end;
+    end;
+
+    Wait(0, 1000, wdLeft);
+  until (GetTickCount() >= T);
+end;
+
+function CollectBox.GetTitle(Color: Int32): String;
+var
+  B: TBox;
+begin
+  B := Self.GetBounds();
+  B.Y2 := B.Y1 + 35;
+
+  Result := GetTextAtEx(B, 1, 3, 3, Color, 0, 'UpChars07_s');
+end;
+
+procedure CollectBox.Debug();
+var
+  BMP, Idx, i, c: Integer;
+begin
+
+  BMP := BitmapFromClient(GetClientBounds());
+
+  c := 255;
+  for Idx := 0 to High(FSlots) do
+    for i := 0 to High(FSlots[Idx]) do
+    begin
+      DrawTPABitmap(BMP, EdgeFromBox(FSlots[Idx][i]), c);
+      c := i + ((c * 128) and $FFFFFF);
+      WriteLn(c);
+    end;
+
+  for i := 0 to High(FButtons) do
+    DrawTPABitmap(BMP, EdgeFromBox(FButtons[i]), $00FF00);
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+procedure CollectBox.DebugOverlay();
+var
+  Overlay: TWindowOverlay;
+  Bmp: TMufasaBitmap;
+  Idx, i, c: Integer;
+begin
+  Overlay := TWindowOverlay.CreateOverlay();
+  Bmp := Overlay.Bitmap;
+
+  c := 255;
+  for Idx := 0 to High(FSlots) do
+    for i := 0 to High(FSlots[Idx]) do
+    begin
+      Bmp.DrawTPA(EdgeFromBox(FSlots[Idx][i]), c);
+      c := i + ((c * 128) and $FFFFFF);
+    end;
+
+  for i := 0 to High(FButtons) do
+    Bmp.DrawTPA(EdgeFromBox(FButtons[i]), $00FF00);
+end;
+
+
+function CollectBox._Find(): Boolean;
+const
+  TEXT_COL = 2070783;
+var
+  p: TPoint;
+begin
+  Result := (srl.FindText(P, 'Collect', 'UpChars07_s', TEXT_COL, 0, Box(210, 55, 280, 72)));
+  if not Result then
+    Result := (srl.FindText(P, 'Box', 'UpChars07_s', TEXT_COL, 0, Box(280, 55, 310, 72)))
+end;
+
+function CollectBox.IsOpen(WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self._Find()) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+
+function CollectBox.Close(): Boolean;
+var
+  t: UInt64;
+begin
+  if (not Self.IsOpen()) then
+    Exit(True);
+
+  if (srl.CloseInterfacesWithEscape) then
+  begin
+    Keyboard.PressKey(VK_ESCAPE);
+    t := GetTickCount() + Random(4000, 5000);
+    while (t > GetTickCount()) do
+    begin
+      if (not Self.IsOpen()) then
+        Exit(True);
+    end;
+    srl.ToggleCloseInterfacesWithEscape(False);
+  end;
+
+  Self.ClickButton(cbbClose);
+  t := GetTickCount() + Random(4000, 5000);
+  while (t > GetTickCount()) do
+  begin
+    if (not Self.IsOpen()) then
+      Exit(True);
+  end;
+end;
+
+
+function CollectBox.NeedCollect(Slot: ECollectBoxSlot; Item: ECollectBoxExchange): Boolean;
+var
+  x, y: Integer;
+  OutlineColor := 65536;
+begin
+  if not Self.IsOpen() then
+    Exit(False);
+  if Item = cbeItem then
+    Result := FindColor(x, y, OutlineColor, Self.FSlots[Slot][1])
+  else
+    Result := FindColor(x, y, OutlineColor, Self.FSlots[Slot][2]);
+end;
+
+function CollectBox.Collect(Slot: ECollectBoxSlot; Item: ECollectBoxExchange; clickType: Integer = mouse_Left): Boolean;
+var
+  t: UInt64;
+begin
+  if not Self.NeedCollect(Slot, Item) then
+    Exit(False);
+
+  Result := False;
+
+  t := GetTickCount() + Random(2000, 3000);
+  Mouse.Click(Self.FSlots[Slot][Item+1], clickType);
+
+  while (t > GetTickCount()) do
+  begin
+    if (not Self.NeedCollect(Slot, Item)) then
+      Exit(True);
+  end;
+end;
+
+function CollectBox.CollectSlot(Slot: ECollectBoxSlot): Boolean;
+var
+  i: Int32;
+begin
+  for i := 0 to 1 do
+    Self.Collect(Slot, ECollectBoxExchange(i));
+  Result := (not Self.NeedCollect(Slot, ECollectBoxExchange(0))) and
+            (not Self.NeedCollect(Slot, ECollectBoxExchange(1)));
+end;
+
+function CollectBox.FindDTM(DTM: Integer): TIntArray;
+var
+  i: Int32;
+  BoxArray: TBoxArray;
+begin
+  if Self.IsOpen() then
+  begin
+    for i := 0 to High(Self.FSlots) do
+      BoxArray += Self.FSlots[i][1];
+    Result := SRL.FindDTMInTBA(DTM, BoxArray);
+  end;
+end;
+
+function CollectBox.CollectDTM(DTM: Integer): Boolean;
+var
+  i: Int32;
+  Slots: TIntArray;
+begin
+  Result := False;
+  Slots := Self.FindDTM(DTM);
+
+  if Slots = [] then
+    Exit(Result);
+
+  for i := 0 to High(Slots) do
+    CollectBox.CollectSlot(ECollectBoxSlot(Slots[i]));
+
+  if Self.FindDTM(DTM) = [] then
+    Result := True;
+end;
+
+function CollectBox.ClickButton(Btn: ECollectBoxButton; clickType: Integer = mouse_Left): Boolean;
+begin
+  Result := Self.IsOpen();
+
+  if (Result) then
+    Mouse.Click(Self.FButtons[Btn], clickType);
+end;
+
+
+
+begin
+  CollectBox.__Setup();
+end;
