@@ -479,7 +479,7 @@ begin
 
   Equipment.MouseSlot(4, mouse_Move);
 
-  if not MainScreen.IsUpText(['Infernal', 'Crystal']) then
+  if not MainScreen.IsUpText(['Infernal', 'Crystal']) or MainScreen.IsUpText(['uncharged'])then
     Exit();
 
   if ChooseOption.Open() then
