@@ -12,6 +12,17 @@ begin
       Result += i;
 end;
 
+function TRSInventory.CountEmptySlots(): Int32;
+begin
+  Result := 28 - Self.Count();
+end;
+
+function TRSInventory.HasSpace(SlotsNeeded: Int32 = 1): Boolean;
+begin
+  Result := SlotsNeeded <= Self.CountEmptySlots();
+end;
+
+
 function TRSInventory.DragSlotToSlot(Slot1, Slot2: Int32): Boolean;
 begin
   if not Self.IsSlotValid(Slot1) or not Self.IsSlotValid(Slot2) then
@@ -32,6 +43,25 @@ end;
 function TRSInventory.SlotAmount(Slot: Int32): Int32;
 begin
   Result := SRL.GetItemAmount(Self.GetSlotBox(Slot));
+end;
+
+function TRSInventory.WaitSlotAmount(Slot, Amount, Time: Int32; Compare: EComparator = __EQ__): Boolean;
+var
+  T: UInt64;
+begin
+  T := GetTickCount() + Time;
+
+  while (T > GetTickCount()) do
+  begin
+    case Compare of
+      __LT__: if (Self.SlotAmount(Slot) < Amount) then Exit(True);
+      __GT__: if (Self.SlotAmount(Slot) > Amount) then Exit(True);
+      __EQ__: if (Self.SlotAmount(Slot) = Amount) then Exit(True);
+      __NE__: if (Self.SlotAmount(Slot) <> Amount) then Exit(True);
+    end;
+
+    Wait(Random(30, 60));
+  end;
 end;
 
 // Same as above but uses DTM which will probably most cases.
@@ -126,4 +156,22 @@ var
 begin
   ClosestSlots := Self.ClosestDTMs(DTM1, DTM2);
   Result := Self.CombineItems(ClosestSlots[0], ClosestSlots[1]);
+end;
+
+// Returns inventory slots that have items that are not the ones we passed to the function
+// Useful in case your script might accidently end up with random items in the inventory
+function TRSInventory.GetRandomItemSlots(DTMs: TIntArray): TIntArray;
+var
+  i, DTM: Int32;
+  UsedSlots, DTMsSlots: TIntArray;
+begin
+  UsedSlots := Inventory.GetUsedSlots();
+
+  for DTM in DTMs do
+    DTMsSlots += Inventory.FindDTM(DTM);
+
+  for i := 0 to High(DTMsSlots) do
+    UsedSlots.Remove(DTMsSlots[i]);
+
+  Result := UsedSlots;
 end;

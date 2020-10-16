@@ -65,5 +65,21 @@ begin
     Result := srl.WaitColor(1857749, Self.OrbInfo[Ord(MMOrbRun)].Middle, Time);
 end;
 
+procedure TRSMinimap.Debug();
+var
+  BMP: TMufasaBitmap;
+  i: Int32;
+begin
+  BMP := GetMufasaBitmap(BitmapFromClient(SRL.DefaultClientBounds));
 
+  BMP.DrawCircle(Self.CompassInfo.Middle, Self.CompassInfo.Radius, False, 16777215)
+  for i := 0 to High(Self.OrbInfo) do
+  begin
+    BMP.DrawBox(Self.OrbInfo[i].TextBox, False, $0000FF);
+    BMP.DrawCircle(Self.OrbInfo[i].Middle, Self.OrbInfo[i].Radius, False, 16777215);
+  end;
+  BMP.DrawBox(FBounds, False, $00FF00);
+  BMP.Debug();
+  BMP.Free();
+end;
 

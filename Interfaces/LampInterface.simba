@@ -16,17 +16,18 @@ type
 
 var
   LampInterface: TLampInterface;
+  //LampDTM := DTMFromString('mlwAAAHicY2dgYMhjYmCIA+JcIC4F4gogzgbiHCDWY2Rg0AJiAyDWBWJtIDYEYjUgXrRAEKibEU6jYooAAAqeBvw=');
 
 procedure LampInterface.__Setup();
 var
   i: Int32;
 
-  procedure SetSkillButtonBounds(Skill: ESkillButton; X, Y, Width, Height: Int32);
+  procedure SetSkillBounds(Skill: ESkillButton; X, Y, Width, Height: Int32);
   begin
     FSkillButtons[Skill] := [X, Y, X + Width, Y + Height];
   end
 
-  procedure SetLampButtonBounds(Button: ELampButton; X, Y, X2, Y2: Int32);
+  procedure SetButtonBounds(Button: ELampButton; X, Y, X2, Y2: Int32);
   begin
     FButtons[Button] := [X, Y, X2, Y2];
   end;
@@ -41,17 +42,17 @@ begin
     with Self.GetBounds() do
     begin
       for i := 0 to 5 do
-        SetSkillButtonBounds(ESkillButton(i), (X1 + 182 + (32 * i)), Y1 + 126, 24, 24);
+        SetSkillBounds(ESkillButton(i), (X1 + 182 + (32 * i)), Y1 + 126, 24, 24);
 
       for i := 0 to 5 do
-        SetSkillButtonBounds(ESkillButton(i+5), (X1 + 167 + (32 * i)),   Y1 + 156, 24, 24);
+        SetSkillBounds(ESkillButton(i+5), (X1 + 167 + (32 * i)),   Y1 + 156, 24, 24);
       for i := 0 to 5 do
-        SetSkillButtonBounds(ESkillButton(i+11), (X1 + 167 + (32 * i)),   Y1 + 184, 24, 24);
+        SetSkillBounds(ESkillButton(i+11), (X1 + 167 + (32 * i)),   Y1 + 184, 24, 24);
       for i := 0 to 5 do
-        SetSkillButtonBounds(ESkillButton(i+17), (X1 + 167 + (32 * i)),   Y1 + 212, 24, 24);
+        SetSkillBounds(ESkillButton(i+17), (X1 + 167 + (32 * i)),   Y1 + 212, 24, 24);
 
-      SetLampButtonBounds(lbConfirm, 214, 270, 306, 283);
-      SetLampButtonBounds(lbClose, 482, 24, 507, 45);
+      SetButtonBounds(lbConfirm, 214, 270, 306, 283);
+      SetButtonBounds(lbClose, 482, 24, 507, 45);
     end;
   end;
 end;
