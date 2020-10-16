@@ -61,14 +61,32 @@ var
 // Returns true if bankscreen is open.
 function WaspBanking.OpenBank(Tile: TPoint; Color: TCTS2Color): Boolean;
 begin
-  Result := Obj.Click(Tile, Color, ['Bank', 'booth', 'chest'], True, 2, BankRSW);
+  if Obj.Click(BankRSW, Tile, Color, ['Bank', 'booth', 'chest']) then
+    Result := BankScreen.IsOpen() or PinScreen.IsOpen();
 end;
 
 // Same as above for multiple tiles.
 function WaspBanking.OpenBank(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
 begin
-  Result := Obj.Click(Tiles, Color, ['Bank', 'booth', 'chest'], True, 2, BankRSW);
+  if Obj.Click(BankRSW, Tiles, Color, ['Bank', 'booth', 'chest']) then
+    Result := BankScreen.IsOpen() or PinScreen.IsOpen();
 end;
+
+// Tries to open the collect box at bank with the specified Color at the specified Tile.
+// Returns true if collect box is open.
+function WaspBanking.OpenCollectBox(Tile: TPoint; Color: TCTS2Color): Boolean;
+begin
+  if Obj.SelectOption(BankRSW, Tile, Color, ['Collect', 'Bank', 'booth', 'chest']) then
+    Result := CollectBox.IsOpen() or PinScreen.IsOpen();
+end;
+
+function WaspBanking.OpenCollectBox(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
+begin
+  if Obj.SelectOption(BankRSW, Tiles, Color, ['Collect', 'Bank', 'booth', 'chest']) then
+    Result := CollectBox.IsOpen() or PinScreen.IsOpen();
+end;
+
+
 
 // Loads a smaller map in a new instance of RSW for faster execution.
 // Optionally you can set it to free the whole world map that is
@@ -135,6 +153,16 @@ begin
     Exit(False);
 
   Result := Self.OpenBank(ClosestBankTile, ClosestBankColor);
+end;
+
+// Opens the closest bank collect box supported by WaspBanking.
+// Use this in your script to open a bank with a single line of code.
+function WaspBanking.OpenClosestCollectBox(): Boolean;
+begin
+  if not WaspWalker.AtLocation(BankRSW, ClosestBankTile) then
+    Exit(False);
+
+  Result := Self.OpenCollectBox(ClosestBankTile, ClosestBankColor);
 end;
 
 
