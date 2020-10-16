@@ -10,9 +10,8 @@ type
 var
   Obj: TMSObject;
 
-
 // Searches for a color in the MainScreen with the help of RSWalker.
-function TMSObject.Find(DoSort: Boolean = True; Expand: Int32 = 0; Map: TRSWalker = WaspRSW): TRectArray;
+function TMSObject.Find(Map: TRSWalker = WaspRSW; DoSort: Boolean = True; Expand: Int32 = 0): TRectArray;
 var
   Loc, Me: TPoint;
   rect: TRectangle;
@@ -70,25 +69,26 @@ begin
     Result += ATPA[0].MinAreaRect;
 end;
 
-// Searches for a color in a certain tile and clicks it if found.
-function TMSObject.Click(Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean = True): Boolean;
+// Searches for a color in a certain tile and hovers it if found.
+function TMSObject.Hover(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean;
 var
   Rectangles: array of TRectangle;
   Rectangle: TRectangle;
   i: Int32;
   t: UInt64;
 begin
+  if not WaspWalker.TileVisible(Map, Tile) then
+    Exit(False);
 
   Result := False;
-  if not Wasp.IsTileVisible(Map, Tile) then
-    Exit(False);
+
   for i := 1 to Attempts do
   begin
     Obj := [[Tile], Color, 200, 8];
 
     t := GetTickCount() + 3000;
     repeat
-      Rectangles := obj.Find(DoSort, 20, Map);
+      Rectangles := Obj.Find(Map, DoSort, 20);
       if (GetTickCount() >= t) then
         Exit(False);
     until Rectangles;
@@ -97,78 +97,94 @@ begin
     mouse.Move(SRL.RandomPoint(Rectangle));
 
     if MainScreen.IsUpText(SubStrs) then
-    begin
-      if mouse.Click(ctRed) then
-      begin
-        if not HasInterface then
-          Exit(True);
-
-        Minimap.WaitPlayerMoving(False, 3000);
-        t := GetTickCount() + 4000;
-        repeat
-          if Wasp.IsInterfaceOpen() then
-            Exit(True)
-          else
-            Wait(Random(25, 50));
-        until (GetTickCount() >= t);
-      end;
-    end;
-
+      Exit(True);
     Minimap.RandomCompass(-180,180);
   end;
+
+  Result := MainScreen.IsUpText(SubStrs);
 end;
 
-// Searches for a color in several tiles and clicks it if found.
-function TMSObject.Click(Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; HasInterface: Boolean = False; Attempts: Int32 = 2; Map: TRSWalker = WaspRSW; DoSort: Boolean=True): Boolean; overload;
+// Searches for a color in several tiles and hovers it if found.
+function TMSObject.Hover(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean; overload;
 var
   Rectangles: array of TRectangle;
   Rectangle: TRectangle;
   i: Int32;
   t: UInt64;
 begin
+  if not WaspWalker.TileVisible(Map, Tiles) then
+    Exit(False);
 
   Result := False;
 
-  if not Wasp.AnyTileVisible(Map, Tiles) then
-    Exit(False);
   for i := 1 to Attempts do
   begin
     Obj := [Tiles, Color, 200, 8];
 
     t := GetTickCount() + 3000;
     repeat
-      Rectangles := obj.Find(DoSort, 20, Map);
+      Rectangles := Obj.Find(Map, DoSort, 20);
       if (GetTickCount() >= t) then
         Exit(False);
     until Rectangles;
-
     Rectangle := Rectangles[Random(0, High(Rectangles))];
 
     mouse.Move(SRL.RandomPoint(Rectangle));
 
     if MainScreen.IsUpText(SubStrs) then
-    begin
-      if mouse.Click(ctRed) then
-      begin
-        if not HasInterface then
-          Exit(True);
-
-        Minimap.WaitPlayerMoving(False, 3000);
-        t := GetTickCount() + 4000;
-        repeat
-          if Wasp.IsInterfaceOpen() then
-            Exit(True)
-          else
-            Wait(Random(25, 50));
-        until (GetTickCount() >= t);
-      end;
-    end;
-
+      Exit(True);
     Minimap.RandomCompass(-180,180);
   end;
+
+  Result := MainScreen.IsUpText(SubStrs);
 end;
 
-procedure TMSObject.Debug(Map: TRSWalker = WaspRSW; Tile: TPoint; Color: TCTS2Color; DoSort: Boolean = True);
+
+// Searches for a color in a certain tile and clicks it if found.
+function TMSObject.Click(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; LeftClick: Boolean = True; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean;
+begin
+  if not Self.Hover(Map, Tile, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  Result := (LeftClick and Mouse.Click(ctRed)) or ChooseOption.Open();
+end;
+
+// Searches for a color in several tiles and clicks it if found.
+function TMSObject.Click(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; LeftClick: Boolean = True; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean; overload;
+begin
+  if not Self.Hover(Map, Tiles, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  Result := (LeftClick and Mouse.Click(ctRed)) or ChooseOption.Open();
+end;
+
+function TMSObject.SelectOption(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean;
+begin
+  if not Self.Hover(Map, Tile, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  if MainScreen.IsUpText(SubStrs[0]) then
+    Result := Mouse.Click(ctRed)
+  else if ChooseOption.Open() then
+    Result := ChooseOption.Select(SubStrs[0])
+  else
+    Result := False;
+end;
+
+function TMSObject.SelectOption(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean; overload;
+begin
+  if not Self.Hover(Map, Tiles, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  if MainScreen.IsUpText(SubStrs[0]) then
+    Result := Mouse.Click(ctRed)
+  else if ChooseOption.Open() then
+    Result := ChooseOption.Select(SubStrs[0])
+  else
+    Result := False;
+end;
+
+procedure TMSObject.Debug(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; DoSort: Boolean = True);
 var
   BMP, i: Integer;
   TileBox, RectangleBox: TBox;
@@ -177,14 +193,14 @@ var
   t: UInt64;
 begin
 
-  if not Wasp.IsTileVisible(Map, Tile) then
+  if not WaspWalker.TileVisible(Map, Tile) then
     Exit();
 
   Obj := [[Tile], Color, 200, 8];
 
   t := GetTickCount() + 3000;
   repeat
-    Rectangles := obj.Find(DoSort, 15, Map);
+    Rectangles := Obj.Find(Map, DoSort, 15);
     if (GetTickCount() >= t) then
       Exit();
   until Rectangles;
@@ -215,7 +231,7 @@ var
   RectanglesTPA: TPointArray;
   t: UInt64;
 begin
-  if not Wasp.AnyTileVisible(Map, Tiles) then
+  if not WaspWalker.TileVisible(Map, Tiles) then
     Exit();
 
   BMP := BitmapFromClient(GetClientBounds());
@@ -226,7 +242,7 @@ begin
     Obj := [[Tiles[i]], Color, 200, 8];
     t := GetTickCount() + 3000;
     repeat
-      Rectangles := obj.Find(DoSort, 15, Map);
+      Rectangles := Obj.Find(Map, DoSort, 15);
       if (GetTickCount() >= t) then
         Exit();
     until Rectangles;

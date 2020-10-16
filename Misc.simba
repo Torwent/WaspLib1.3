@@ -7,7 +7,6 @@ type
 
 var
   Wasp: TWasp;
-  WaspRSW: TRSWalker;
   CraftCapeDTM := DTMFromString('mggAAAHicY2NgYJjCxMAwA4inAXE/EM8C4qlA/Bgo9wqI3wHxeyC+B8SfgVhUUJAhxEGPIT3ACshjRMLkAAAg3Qr7');
   DuelRingDTM := DTMFromString('mggAAAHicY2NgYNjJxMCwHYh3APEBIN4ExAeBuIGRgaEDiLuAuBWIW4C4FojvHpQCYwYGRjgW7BNlIA8AAE1QC7M=');
   CloseButtonDTM := DTMFromString('mwQAAAHic42RgYHjGyMDwCIhfAfFDIH4JxG+B+A4UfwBicaA6ISiWBmIZIFYEYnkg5oViBgZGIjCVAQDySQj5');
@@ -58,57 +57,7 @@ begin
   end;
 end;
 
-function Wasp.GotTeleported(WaitTime: UInt32 = 2400): Boolean;
-var
-  t: UInt64;
-  StartPos: TPoint;
-begin
-  t := GetTickCount() + WaitTime;
-  StartPos := WaspRSW.GetMyPos();
-  Result := False;
-  Wait(WaitTime);
-  repeat
-    if (WaspRSW.GetMyPos.DistanceTo(StartPos) > 25) then
-      Exit(True)
-    else if (WaitTime > 0) then
-      Wait(Random(25, 50));
-  until (GetTickCount() >= t);
-end;
 
-function Wasp.AtLocation(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 15): Boolean;
-begin
-  Result := (Map.GetMyPos.DistanceTo(Tile) <= Distance);
-end;
-
-function Wasp.AtLocation(Map: TRSWalker = WaspRSW; Tiles: TPointArray; Distance: Int32 = 15): Boolean; overload;
-var
-  i: Int32;
-begin
-  Result := False
-
-  for i := 0 to (Length(Tiles) - 1) do
-  begin
-    if (Map.GetMyPos.DistanceTo(Tiles[i]) <= Distance) then
-      Exit(True);
-  end;
-end;
-
-function Wasp.IsTileVisible(Map: TRSWalker = WaspRSW; Tile: TPoint): Boolean;
-begin
-  Result := Mainscreen.FBounds.Contains(Map.GetTileMS(Tile));
-end;
-
-function Wasp.AnyTileVisible(Map: TRSWalker = WaspRSW; Tiles: TPointArray): Boolean;
-var
-  i: Int32;
-begin
-  Result := False;
-  for i := 0 to (Length(Tiles) - 1) do
-  begin
-    if Wasp.IsTileVisible(Map, Tiles[i]) then
-      Exit(True);
-  end;
-end;
 
 function Wasp.IsInterfaceOpen(): Boolean;
 var
@@ -136,25 +85,6 @@ begin
     Result := ShopScreen.Close();
 end;
 
-procedure Wasp.DebugMSTiles(Map: TRSWalker; Tiles: TPointArray);
-var
-  BMP, i, c: Integer;
-  TileBox: TBox;
-begin
-  BMP := BitmapFromClient(GetClientBounds());
-  c := 255;
-
-  for i:=0 to High(Tiles) do
-  begin
-    TileBox := Map.GetTileMS(Tiles[i]).Bounds();
-    DrawTPABitmap(BMP, EdgeFromBox(TileBox), c);
-    c := i + ((c * 128) and $FFFFFF);
-    WriteLn(c);
-  end;
-
-  ShowBitmap(BMP);
-  FreeBitmap(BMP);
-end;
 
 procedure Wasp.DebugPlayerBox();
 var
@@ -167,20 +97,11 @@ begin
 end;
 
 
-procedure Wasp.LoadMapSlices(Map: String; Slices: TPointArray);
-begin
-   WaspRSW.Free();
-   WaspRSW.InitEx(Map, Slices);
-end;
-
-
 procedure Wasp.Free();
 begin
-  WaspRSW.Free();
   FreeDTMs([CraftCapeDTM, DuelRingDTM, CloseButtonDTM]);
 end;
 
 begin
-  WaspRSW.Init('world.png');
   AddOnTerminate(@Wasp.Free);
 end;

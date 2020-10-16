@@ -4,6 +4,7 @@ type
   end;
 
 var
+  WaspRSW: TRSWalker;
   WaspWalker: TWaspWalker;
 
 function WaspWalker.AtLocation(Map: TRSWalker; Tile: TPoint; Distance: Int32 = 15): Boolean;
@@ -35,6 +36,22 @@ begin
       if (Map.GetMyPos.DistanceTo(TilesArrayArray[Idx][i]) <= Distance) then
         Exit(True);
 
+end;
+
+
+function WaspWalker.TileVisible(Map: TRSWalker = WaspRSW; Tile: TPoint): Boolean;
+begin
+  Result := Mainscreen.FBounds.Contains(Map.GetTileMS(Tile));
+end;
+
+function WaspWalker.TileVisible(Map: TRSWalker = WaspRSW; Tiles: TPointArray): Boolean; overload;
+var
+  i: Int32;
+begin
+  Result := False;
+  for i := 0 to High(Tiles) do
+    if Self.TileVisible(Map, Tiles[i]) then
+      Exit(True);
 end;
 
 // Compares Tiles with the Player position and returns the closest one.
@@ -86,4 +103,59 @@ begin
     Minimap.ToggleRun(True);
 
   Result := Map.WalkPath([Tile], 3);
+end;
+
+function WaspWalker.GotTeleported(WaitTime: UInt32 = 2400): Boolean;
+var
+  t: UInt64;
+  StartPos: TPoint;
+begin
+  t := GetTickCount() + WaitTime;
+  StartPos := WaspRSW.GetMyPos();
+  Result := False;
+  Wait(WaitTime);
+  repeat
+    if (WaspRSW.GetMyPos.DistanceTo(StartPos) > 25) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+procedure WaspWalker.DebugMSTiles(Map: TRSWalker; Tiles: TPointArray);
+var
+  BMP, i, c: Integer;
+  TileBox: TBox;
+begin
+  BMP := BitmapFromClient(GetClientBounds());
+  c := 255;
+
+  for i:=0 to High(Tiles) do
+  begin
+    TileBox := Map.GetTileMS(Tiles[i]).Bounds();
+    DrawTPABitmap(BMP, EdgeFromBox(TileBox), c);
+    c := i + ((c * 128) and $FFFFFF);
+    WriteLn(c);
+  end;
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+
+procedure WaspWalker.LoadMapSlices(Map: String; Slices: TPointArray);
+begin
+   WaspRSW.Free();
+   WaspRSW.InitEx(Map, Slices);
+end;
+
+
+procedure WaspWalker.Free();
+begin
+  WaspRSW.Free();
+end;
+
+begin
+  WaspRSW.Init('world.png');
+  AddOnTerminate(@WaspWalker.Free);
 end;
