@@ -5,7 +5,6 @@ type
 var
   FTabs: array [EBankTab] of TBox;
   BankBox: TBox = [73, 83, 456, 298];
-  NoteDTM := DTMFromString('mlwAAAHicY2dgYDBlYmDwB2JfILaGsk2A2AqIHwPlXwLxJyD+AMRPgPgNlM3AwIgHUwQAr2UIVA==');
 
 // BankScreen.Setup override to include bank tabs.
 procedure TRSBankScreen.__Setup(); override;
@@ -99,6 +98,34 @@ end;
 // Override to make have a small chance of not closing the bank with escape if it's enabled.
 // IMO a normal human playing RuneScape doesn't close the bank 100% of the time with escape, even
 // if it's the most efficient player. Also added a customizable wait timer.
+function TRSBankScreen.Close(): Boolean; override;
+var
+  t: UInt64;
+begin
+  if (not Self.IsOpen()) then
+    Exit(True);
+
+  if (srl.CloseInterfacesWithEscape and (Random(0, 99) > Random(3, 10))) then
+  begin
+    Keyboard.PressKey(VK_ESCAPE);
+    t := GetTickCount() + Random(4000, 5000);
+    while (t > GetTickCount()) do
+    begin
+      if (not Self.IsOpen()) then
+        Exit(True);
+    end;
+    srl.ToggleCloseInterfacesWithEscape(False);
+  end;
+
+  Self.ClickButton(BANK_BUTTON_CLOSE);
+  t := GetTickCount() + Random(250, 500)
+  while (t > GetTickCount()) do
+  begin
+    if (not Self.IsOpen()) then
+      Exit(True);
+  end;
+end;
+
 function TRSBankScreen.Close(WaitTime: UInt32): Boolean; overload;
 var
   t: UInt64;
@@ -144,6 +171,33 @@ begin
   Wait(100, 250);
 end;
 
+function TRSBankScreen.GetRearrangeMode(): EBankButton;
+var
+  i: Int32;
+begin
+  for i := 0 to 1 do
+    if Self.IsToggled(EBankButton(i)) then
+      Exit(EBankButton(i));
+end;
+
+function TRSBankScreen.GetWithdrawAs(): EBankButton;
+var
+  i: Int32;
+begin
+  for i := 2 to 3 do
+    if Self.IsToggled(EBankButton(i)) then
+      Exit(EBankButton(i));
+end;
+
+function TRSBankScreen.GetQuantity(): EBankButton;
+var
+  i: Int32;
+begin
+  for i := 4 to 8 do
+    if Self.IsToggled(EBankButton(i)) then
+      Exit(EBankButton(i));
+end;
+
 function TRSBankScreen.DepositAll(): Boolean; override;
 var
   InvCount: Int32;
@@ -152,11 +206,12 @@ begin
   if (InvCount = 0) then
     Exit(True);
 
-  Result := Self.ClickButton(BANK_BUTTON_DEPOSIT_INVENTORY);
+  Self.ClickButton(BANK_BUTTON_DEPOSIT_INVENTORY);
 
-  Inventory.WaitCount(InvCount, 1000, __LT__);
-
+  Result := Inventory.WaitCount(InvCount, 1000, __LT__);
 end;
+
+
 
 // BankScreen tabs functions. They are self explanatory so no explanations here.
 function TRSBankScreen.OpenTab(Tab: EBankTab): Boolean;
@@ -197,10 +252,6 @@ begin
   Result := Tab = BankScreen.GetCurrentTab();
 end;
 
-
-
-
-// Counts how many bank tabs the bank has
 function TRSBankScreen.CountTabs(): Int32;
 var
   i     : Integer;
@@ -218,12 +269,11 @@ begin
       Exit(i - 1);
 
   Result := 9;
-
 end;
 
 // This next 2 functions I'm not sure who the creator is since I've seen
 // them in several scripts but credits to whoever made this.
-
+// They are self explanatory by their name so no explaining here.
 function TRSBankScreen.GetCurrentTab(): EBankTab;
 var
   i     : Integer;
@@ -254,7 +304,9 @@ begin
       Exit(True);
 end;
 
-// Checks if the bankscreen is scrollable in the given direction
+
+
+// Checks if the bankscreen is scrollable in the given direction.
 function TRSBankScreen.CanScroll(Down: Boolean = True): Boolean;
 begin
     Result := (Down and (GetColor(486, 276) = 1646629)) or
@@ -267,7 +319,7 @@ begin
     Result := Self.CanScroll(True) or Self.CanScroll(False);
 end;
 
-// Finds the scroll bar position
+// Finds the scroll bar position.
 function TRSBankScreen.GetScrollPosition(): Int32;
 var
   X, Y: Int32;
@@ -276,7 +328,7 @@ begin
   Result := Y;
 end;
 
-// Scrolls the bankscreen in the given direction
+// Scrolls the bankscreen in the given direction.
 function TRSBankScreen.Scroll(Down: Boolean = True; MinSteps: Int32 = 2; MaxSteps: Int32 = 5): Boolean;
 var
   ScrollPosition: Int32;
@@ -291,7 +343,7 @@ begin
   Result := ScrollPosition <> Self.GetScrollPosition();
 end;
 
-//
+// Fixes the scroll position if the DTM is visible so we can properly use other functions and procedures.
 function TRSBankScreen.FindAndFixDTM(DTM: Integer): Int32;
 var
   BankHalves: TBoxArray;
@@ -306,12 +358,10 @@ begin
   if Slot > -1 then
     Exit(Slot);
 
-
   BankHalves := BankBox.Partition(2, 1);
 
   // Checks in the DTM is in the lower side of the bank
   BottomBank := SRL.FindDTMInTBA(DTM, [BankHalves[1]], 1) <> [];
-
 
   for i := 0 to 4 do
   begin
@@ -328,7 +378,7 @@ begin
   Result := -1;
 end;
 
-// Scrolls until it finds the DTM on the bankscreen
+// Scrolls until it finds the DTM on the bankscreen or reaches scroll limit.
 function TRSBankScreen.ScrollToDTM(Tab: EBankTab; DTM: Integer): Int32;
 var
   BankSlot: Int32;
@@ -375,7 +425,7 @@ begin
   if BankSlot <> -1 then
     Exit(BankSlot);
 
-  t := GetTickCount() + Random(7000, 10000);
+  t := GetTickCount() + Random(14000, 17000);
   repeat
     BankSlot := Self.FindAndFixDTM(DTM);
     if BankSlot <> -1 then
@@ -388,6 +438,7 @@ begin
 
   Result := BankSlot;
 end;
+
 
 
 // This next function is useless almost everytime except on the rare ocasion of 2 items that look the same.
@@ -407,6 +458,8 @@ begin
   end;
 end;
 
+
+
 // Gets the amount of the item amount in specified bank slot.
 function TRSBankScreen.SlotAmount(Slot: Int32): Int32;
 begin
@@ -418,6 +471,8 @@ function TRSBankScreen.DTMAmount(DTM: Integer): Int32;
 begin
   Result := Self.SlotAmount(Self.FindDTM(DTM));
 end;
+
+
 
 // Searches for DTM in inventory and if it exists, it tries to deposit it.
 function TRSBankScreen.DepositDTM(DTM: Integer; AmountButton: EBankButton = BANK_BUTTON_QUANTITY_All; AllButton: Boolean = False): Boolean;
@@ -442,6 +497,7 @@ begin
       BankScreen.ClickButton(BANK_BUTTON_DEPOSIT_INVENTORY, mouse_Left)
     else
       Inventory.MouseSlot(Inventory.FindDTM(DTM)[0], mouse_Left);
+    Wait(200, 300);
     Inventory.WaitCount(InvCount, 2000, __LT__);
     ContainsItem := Inventory.Contains(DTM);
   until ((not ContainsItem) or (GetTickCount() >= t));
@@ -456,32 +512,183 @@ var
   i: Int32;
 begin
   Result := True;
-
   for i:=0 to High(DTMs) do
-  begin
     if not Self.DepositDTM(DTMs[i], AmountButton, AllButton) then
     begin
       Result := False;
       Break;
     end;
+end;
+
+
+
+
+
+// Helper function for withdrawing. Shouldn't be called directly.
+function TRSBankScreen._Withdraw(ItemSlot, ItemAmount: Int32; SubStrings: TStringArray; WithdrawAs, Quantity: EBankButton): Boolean;
+var
+  i: Int32;
+  UpText: String;
+begin
+  Mouse.Move(Self.GetSlotBox(ItemSlot));
+  if ItemAmount > 4 then
+  begin
+    if Self.IsUpText([IntToStr(ItemAmount)]) then
+
+      Mouse.Click(mouse_Left)
+    else
+      Self.Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawAs, Quantity);
+  end
+  else
+  begin
+    if (ItemAmount > 0) and (Quantity = BANK_BUTTON_QUANTITY_ONE) then
+    begin
+      for i := 1 to ItemAmount do
+      begin
+        Mouse.Click(mouse_left);
+        Wait(100, 250);
+      end;
+    end
+    else
+    begin
+      if ItemAmount = -1 then
+        UpText := 'All'
+      else
+        UpText := IntToStr(ItemAmount);
+      if Self.IsUpText([UpText]) then
+      begin
+        Mouse.Click(mouse_left);
+        Result := True;
+      end
+      else
+      begin
+        ChooseOption.Open();
+
+        if ItemAmount = WITHDRAW_ALL then
+          Result := ChooseOption.Select(['Withdraw-All'])
+
+        else if ItemAmount = WITHDRAW_ALL_BUT_ONE then
+          Result := ChooseOption.Select(['Withdraw-All-but'])
+
+        else if ChooseOption.Select(['Withdraw-'+UpText+' '],,False) then  // space after amount so it can't find "2" in 28
+          Result := True
+
+        else if ChooseOption.Select(['Withdraw-X']) and
+           self._ExpectText('Enter amount') then
+        begin
+          Keyboard.Send(ToString(ItemAmount),VK_RETURN);
+
+          Result := True;
+        end;
+      end;
+    end;
   end;
 end;
 
-
-function TRSBankScreen.WithdrawFromTab(Tab: EBankTab; Slot: Int32; Amount: Int32; UpText: TStringArray = []; WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
+// Scrolls the bank until it finds the specified DTM and if found, it tries to
+// withdraw the amount specified of that item.
+function TRSBankScreen.WithdrawDTM(Tab: EBankTab; DTMs: TIntArray; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE; Stackable: Boolean): Boolean;
 var
-  InvCount: Int32;
+  DTM, NoteDTM: Integer;
+  ItemSlot, CurrentItemAmount, InvCount, InvSlot: Int32;
+  t: UInt64;
+  WaitAmountBoolean: Boolean;
+  WithdrawAs: EBankButton;
 begin
-  if BankScreen.GetCurrentTab() <> Tab then
-      BankScreen.OpenTab(Tab);
-  InvCount := Inventory.Count();
-  Result := Self.Withdraw(Slot, Amount, UpText, WithdrawMode, Quantity);
-  Inventory.WaitCount(InvCount, 1200, __GT__);
+  if not Self.IsOpen() then
+    Exit(False);
+
+  DTM := DTMs[0];
+  NoteDTM := DTMs[High(DTMs)];
+
+  if (DTM = NoteDTM) and not Stackable then
+    WithdrawAs := BANK_BUTTON_WITHDRAW_ITEM
+  else
+    WithdrawAs := BANK_BUTTON_WITHDRAW_NOTE;
+
+  ChooseOption.Close();
+
+  if Stackable then
+  begin
+    if Inventory.Contains(NoteDTM) then
+    begin
+      InvSlot := Inventory.FindDTM(NoteDTM)[0];
+      CurrentItemAmount := Inventory.SlotAmount(InvSlot);
+    end
+    else if not Inventory.HasSpace(1) then
+      Exit(False)
+    else
+    begin
+      InvSlot := Inventory.GetEmptySlots()[0];
+      CurrentItemAmount := 0;
+    end;
+  end
+  else
+  begin
+    if ItemAmount = -1 then
+    begin
+      if not Inventory.HasSpace(1) then
+        Exit(False);
+    end
+    else if ItemAmount = 0 then
+      Exit(False)
+    else if not Inventory.HasSpace(ItemAmount) then
+      Exit(False);
+
+    InvCount := Inventory.Count();
+  end;
+
+  ItemSlot := Self.ScrollToDTM(Tab, DTM);
+
+  if (ItemSlot < 1) or ((ItemAmount > 0) and (Self.SlotAmount(ItemSlot) < ItemAmount)) then
+    Exit(False);
+
+  Self.ClickButton(WithdrawAs, mouse_Left);
+  Self.ClickButton(Quantity, mouse_Left);
+
+  t := GetTickCount() + Random(5000, 6000);
+  repeat
+    Self._Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawAs, Quantity);
+
+    if (ItemAmount = -1) and Stackable then
+      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, CurrentItemAmount, 1200, __GT__)
+    else if Stackable then
+      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, (CurrentItemAmount + ItemAmount), 1200)
+    else if (ItemAmount = -1) then
+      WaitAmountBoolean := Inventory.WaitCount(InvCount, 1200, __GT__)
+    else
+      WaitAmountBoolean := Inventory.WaitCount((InvCount + ItemAmount), 1200);
+
+  until (t > GetTickCount()) or WaitAmountBoolean;
+
+  Result := WaitAmountBoolean;
 end;
 
-// Only useful with runelite menu entry swapper.
-function TRSBankScreen.ShiftWithdrawFromTab(Tab: EBankTab; Slot: Int32; Amount: Int32; UpText: TStringArray = []; WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
+function TRSBankScreen.WithdrawDTM(Tab: EBankTab; DTM: Integer; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean; overload;
 begin
+  Result := Self.WithdrawDTM(Tab, [DTM], ItemAmount, SubStrings, Quantity, False);
+end;
+
+function TRSBankScreen.WithdrawDTM(Tab: EBankTab; DTM: Integer; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE; Stackable: Boolean): Boolean; overload;
+begin
+  Result := Self.WithdrawDTM(Tab, [DTM], ItemAmount, SubStrings, Quantity, Stackable);
+end;
+
+function TRSBankScreen.WithdrawDTM(Tab: EBankTab; DTMs: TIntArray; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean; overload;
+begin
+  Result := Self.WithdrawDTM(Tab, DTMs, ItemAmount, SubStrings, Quantity, True);
+end;
+
+
+// Only useful with runelite menu entry swapper.
+function TRSBankScreen.ShiftWithdraw(Tab: EBankTab; Slot: Int32; Amount: Int32; UpText: TStringArray = []; WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
+begin
+  if not Self.IsOpen() then
+    Exit(False);
+
+  ChooseOption.Close();
+
+  Self.OpenTab(Tab);
 
   if not Keyboard.isKeyDown(VK_SHIFT) then
   begin
@@ -489,7 +696,7 @@ begin
     WaitEx(110,10);
   end;
 
-  Result := Self.WithdrawFromTab(Tab, Slot, Amount, UpText, WithdrawMode, Quantity);
+  Result := Self._Withdraw(Slot, Amount, UpText, WithdrawMode, Quantity);
 
   if Keyboard.isKeyDown(VK_SHIFT) then
   begin
@@ -499,90 +706,113 @@ begin
 
 end;
 
-// Scrolls the bank until it finds the specified DTM and if found, it tries to
-// withdraw the amount specified of that item.
-function TRSBankScreen.WithdrawDTM(DTM: Integer; ItemAmount: Int32; SubStrings: TStringArray; AmountBtn: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
+function TRSBankScreen.ShiftWithdrawDTM(Tab: EBankTab; DTMs: TIntArray; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE; Stackable: Boolean): Boolean;
 var
-  i, item_slot, inv_count: Int32;
+  DTM, NoteDTM: Integer;
+  ItemSlot, CurrentItemAmount, InvCount, InvSlot: Int32;
+  t: UInt64;
+  WaitAmountBoolean: Boolean;
+  WithdrawAs: EBankButton;
 begin
-  if ((not Self.IsOpen) or (Self.IsOpen() and Inventory.IsFull())) then
+  if not Self.IsOpen() then
     Exit(False);
 
-  item_slot := Self.FindDTM(DTM);
-  if (item_slot = -1) then
+  DTM := DTMs[0];
+  NoteDTM := DTMs[High(DTMs)];
+
+  if (DTM = NoteDTM) and not Stackable then
+    WithdrawAs := BANK_BUTTON_WITHDRAW_ITEM
+  else
+    WithdrawAs := BANK_BUTTON_WITHDRAW_NOTE;
+
+  ChooseOption.Close();
+
+  if Stackable then
   begin
-    if Self.ScrollToDTM(DTM) then
-      item_slot := Self.FindDTM(DTM)
+    if Inventory.Contains(NoteDTM) then
+    begin
+      InvSlot := Inventory.FindDTM(NoteDTM)[0];
+      CurrentItemAmount := Inventory.SlotAmount(InvSlot);
+    end
+    else if not Inventory.HasSpace(1) then
+      Exit(False)
     else
+    begin
+      InvSlot := Inventory.GetEmptySlots()[0];
+      CurrentItemAmount := 0;
+    end;
+  end
+  else
+  begin
+    if ItemAmount = -1 then
+    begin
+      if not Inventory.HasSpace(1) then
+        Exit(False);
+    end
+    else if ItemAmount = 0 then
+      Exit(False)
+    else if not Inventory.HasSpace(ItemAmount) then
       Exit(False);
+
+    InvCount := Inventory.Count();
   end;
 
-  inv_count := Inventory.Count();
+  ItemSlot := Self.ScrollToDTM(Tab, DTM);
 
+  if (ItemSlot < 1) or ((ItemAmount > 0) and (Self.SlotAmount(ItemSlot) < ItemAmount)) then
+    Exit(False);
+
+  Self.ClickButton(WithdrawAs, mouse_Left);
+  Self.ClickButton(Quantity, mouse_Left);
+
+  if not Keyboard.isKeyDown(VK_SHIFT) then
+  begin
+    Keyboard.KeyDown(VK_SHIFT);
+    WaitEx(110,10);
+  end;
+
+  t := GetTickCount() + Random(5000, 6000);
   repeat
-    if Inventory.IsFull() then
-    begin
-      //add Self.DepositItems instead
-      Self.ClickButton(BANK_BUTTON_DEPOSIT_INVENTORY, mouse_Left);
-      Exit(False);
-    end;
-    if (Self.SlotAmount(item_slot) <= 1) then
-       Exit(False);
+    Self._Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawAs, Quantity);
 
-    if (ItemAmount > 4) then
-    begin
-      ChooseOption.Close();
-
-      if Self.IsToggled(AmountBtn) then
-      begin
-        if not Keyboard.isKeyDown(VK_SHIFT) then
-        begin
-          Keyboard.KeyDown(VK_SHIFT);
-          WaitEx(110,10);
-        end;
-      end;
-
-      Mouse.Move(Self.GetSlotBox(item_slot));
-
-      if Self.IsUpText([IntToStr(ItemAmount)]) then
-        Mouse.Click(mouse_Left)
-      else
-      begin
-        if Keyboard.isKeyDown(VK_SHIFT) then
-        begin
-          Keyboard.KeyUp(VK_SHIFT);
-          WaitEx(110,10);
-        end;
-        Self.Withdraw(item_slot, ItemAmount, SubStrings, BANK_BUTTON_WITHDRAW_ITEM);
-      end;
-
-      if Keyboard.isKeyDown(VK_SHIFT) then
-      begin
-        Keyboard.KeyUp(VK_SHIFT);
-        WaitEx(110,10);
-      end;
-    end
-
+    if (ItemAmount = -1) and Stackable then
+      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, CurrentItemAmount, 1200, __GT__)
+    else if Stackable then
+      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, (CurrentItemAmount + ItemAmount), 1200)
+    else if (ItemAmount = -1) then
+      WaitAmountBoolean := Inventory.WaitCount(InvCount, 1200, __GT__)
     else
-    begin
-      Self.ClickButton(AmountBtn, mouse_Left);
-      Mouse.Move(Self.GetSlotBox(item_slot));
-      for i:=1 to ItemAmount do
-      begin
-        if (Inventory.Count(DTM) = 3) then
-          break;
-        Mouse.Click(mouse_left);
-        Sleep(Random(100, 250));
-      end;
-    end;
-    Inventory.WaitCount((inv_count + ItemAmount), 1200);
-  until (Inventory.Count(DTM) >= ItemAmount);
+      WaitAmountBoolean := Inventory.WaitCount((InvCount + ItemAmount), 1200);
 
-  Result := True;
+  until (t > GetTickCount()) or WaitAmountBoolean;
 
+  Result := WaitAmountBoolean;
+
+  if Keyboard.isKeyDown(VK_SHIFT) then
+  begin
+    Keyboard.KeyUp(VK_SHIFT);
+    WaitEx(110,10);
+  end;
 end;
 
-// See TRSBankScreen.FindSecondDTM
+function TRSBankScreen.ShiftWithdrawDTM(Tab: EBankTab; DTM: Integer; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean; overload;
+begin
+  Result := Self.ShiftWithdrawDTM(Tab, [DTM], ItemAmount, SubStrings, Quantity, False);
+end;
+
+function TRSBankScreen.ShiftWithdrawDTM(Tab: EBankTab; DTM: Integer; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE; Stackable: Boolean): Boolean; overload;
+begin
+  Result := Self.ShiftWithdrawDTM(Tab, [DTM], ItemAmount, SubStrings, Quantity, Stackable);
+end;
+
+function TRSBankScreen.ShiftWithdrawDTM(Tab: EBankTab; DTMs: TIntArray; ItemAmount: Int32; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean; overload;
+begin
+  Result := Self.ShiftWithdrawDTM(Tab, DTMs, ItemAmount, SubStrings, Quantity, True);
+end;
+
+
+
+// See TRSBankScreen.FindSecondDTM. NEED REWORK
 function TRSBankScreen.WithdrawSecondDTM(DTM: Integer; ItemAmount: Int32; SubStrings: TStringArray; AmountBtn: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
 var
   i, item_slot, inv_count: Int32;
@@ -664,358 +894,7 @@ begin
 
 end;
 
-// Same as TRSBankScreen.WithdrawDTM but does it within a specified tab
-function TRSBankScreen.WithdrawDTMFromTab(Tab: EBankTab; DTM: Integer; ItemAmount: Int32 = -1; SubStrings: TStringArray; AmountBtn: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
-var
-  i, ItemSlot, InvCount: Int32;
-  UpText: String;
-begin
-  if (not Self.IsOpen()) or Inventory.IsFull() then
-    Exit(False);
-
-  ItemSlot := Self.FindDTM(DTM);
-  if (ItemSlot = -1) then
-  begin
-    if Self.ScrollToDTM(Tab, DTM) <> -1 then
-      ItemSlot := Self.FindDTM(DTM)
-    else
-      Exit(False);
-  end;
-
-  InvCount := Inventory.Count();
-
-  repeat
-    if Inventory.IsFull() then
-    begin
-      if (ItemAmount = -1) and (Inventory.Count(DTM) >= 25) then
-        Exit(True);
-      //add Self.DepositItems instead
-      Self.ClickButton(BANK_BUTTON_DEPOSIT_INVENTORY, mouse_Left);
-      Exit(False);
-    end;
-
-    if (Self.SlotAmount(ItemSlot) <= 1) then
-       Exit(False);
-
-    if (ItemAmount > 4) then
-    begin
-      if (AmountBtn = BANK_BUTTON_QUANTITY_ONE) then
-      begin
-        ChooseOption.Close();
-
-        Mouse.Move(Self.GetSlotBox(ItemSlot));
-        if (ItemAmount = -1) and Self.IsUpText(['All', 'but']) then
-          Mouse.Click(mouse_Left)
-        else if Self.IsUpText([IntToStr(ItemAmount)]) then
-          Mouse.Click(mouse_Left)
-        else
-          Self.Withdraw(ItemSlot, ItemAmount, SubStrings, BANK_BUTTON_WITHDRAW_ITEM);
-      end
-      else
-      begin
-        if not Self.IsToggled(AmountBtn) then
-          Self.ClickButton(AmountBtn, mouse_Left);
-        Mouse.Move(Self.GetSlotBox(ItemSlot));
-        Mouse.Move(Self.GetSlotBox(ItemSlot));
-        if (ItemAmount = 1337) and Self.IsUpText(['All', 'but']) then
-          Mouse.Click(mouse_Left)
-        else if Self.IsUpText([IntToStr(ItemAmount)]) then
-          Mouse.Click(mouse_Left)
-        else
-          Self.Withdraw(ItemSlot, ItemAmount, SubStrings, BANK_BUTTON_WITHDRAW_ITEM);
-      end;
-    end
-
-    else
-
-    begin
-
-      if (AmountBtn = BANK_BUTTON_QUANTITY_ONE) then
-      begin
-        if not Self.IsToggled(AmountBtn) then
-          Self.ClickButton(AmountBtn, mouse_Left);
-        for i:=1 to ItemAmount do
-        begin
-          if (Inventory.Count(DTM) = 3) then
-            break;
-          Mouse.Move(Self.GetSlotBox(ItemSlot));
-          Mouse.Click(mouse_left);
-          Sleep(Random(100, 250));
-        end;
-      end
-      else
-      begin
-        if not Self.IsToggled(AmountBtn) then
-          Self.ClickButton(AmountBtn, mouse_Left);
-        Mouse.Move(Self.GetSlotBox(ItemSlot));
-        if ItemAmount = -1 then
-          UpText := 'All'
-        else
-          UpText := IntToStr(ItemAmount);
-        if Self.IsUpText([UpText]) then
-        begin
-          Mouse.Click(mouse_left);
-          Sleep(Random(100, 250));
-        end
-        else
-          Self.Withdraw(ItemSlot, ItemAmount, SubStrings, BANK_BUTTON_WITHDRAW_ITEM, AmountBtn);
-      end;
-    end;
-
-    Inventory.WaitCount(InvCount, 1200, __GT__);
-    Wait(500);
-  until ((ItemAmount = -1 ) and Inventory.IsFull()) or (Inventory.Count(DTM) >= ItemAmount);
-
-  Result := True;
-
-end;
-
-
-function TRSBankScreen.WithdrawDTM2(Tab: EBankTab; DTM: Integer; ItemAmount: Int32 = -1; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
-var
-  i, ItemSlot, InvCount: Int32;
-  t: UInt64;
-  WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM;
-  UpText: String;
-begin
-  if not Self.IsOpen() then
-    Exit(False);
-
-  ChooseOption.Close();
-
-  if ItemAmount = -1 then
-  begin
-    if not Inventory.HasSpace(1) then
-      Exit(False);
-  end
-  else if ItemAmount = 0 then
-    Exit(False)
-  else if not Inventory.HasSpace(ItemAmount) then
-    Exit(False);
-
-  InvCount := Inventory.Count();
-
-  ItemSlot := Self.ScrollToDTM(Tab, DTM);
-  if (ItemSlot < 0) or (Self.SlotAmount(ItemSlot) < ItemAmount) then
-    Exit(False);
-
-  Self.ClickButton(WithdrawMode, mouse_Left);
-  Self.ClickButton(Quantity, mouse_Left);
-
-  t := GetTickCount() + Random(5000, 6000);
-  repeat
-    Mouse.Move(Self.GetSlotBox(ItemSlot));
-
-    if ItemAmount > 4 then
-    begin
-      if Self.IsUpText([IntToStr(ItemAmount)]) then
-        Mouse.Click(mouse_Left)
-      else
-        Self.Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawMode, Quantity);
-    end
-
-    else
-
-    begin
-      if (ItemAmount > 0) and (Quantity = BANK_BUTTON_QUANTITY_ONE) then
-      begin
-        for i := 1 to ItemAmount do
-        begin
-          Mouse.Click(mouse_left);
-          Wait(100, 250);
-        end;
-      end
-      else
-      begin
-        if ItemAmount = -1 then
-          UpText := 'All'
-        else
-          UpText := IntToStr(ItemAmount);
-
-        if Self.IsUpText([UpText]) then
-          Mouse.Click(mouse_left)
-        else
-          Self.Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawMode, Quantity);
-      end;
-    end;
-  until (t > GetTickCount()) or Inventory.WaitCount((InvCount + ItemAmount), 1200);
-
-  Result := Inventory.WaitCount((InvCount + ItemAmount), 500);
-end;
-
-function TRSBankScreen.WithdrawDTM2(Tab: EBankTab; DTM: Integer; ItemAmount: Int32 = -1; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE; Stackable: Boolean): Boolean; overload;
-var
-  i, ItemSlot, CurrentItemAmount, InvSlot: Int32;
-  t: UInt64;
-  WaitAmountBoolean: Boolean;
-  WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_ITEM;
-  UpText: String;
-begin
-  if not Self.IsOpen() then
-    Exit(False);
-
-  ChooseOption.Close();
-
-  if Inventory.Contains(DTM) then
-  begin
-    InvSlot := Inventory.FindDTM(DTM)[0];
-    CurrentItemAmount := Inventory.SlotAmount(InvSlot);
-  end
-  else if not Inventory.HasSpace(1) then
-    Exit(False)
-  else
-  begin
-    InvSlot := Inventory.GetEmptySlots()[0];
-    CurrentItemAmount := 0;
-  end;
-
-  ItemSlot := Self.ScrollToDTM(Tab, DTM);
-
-  if (ItemSlot < 0) then
-    Exit(False)
-  else if (ItemAmount = -1) and (Self.SlotAmount(ItemSlot) < 1) then
-    Exit(False)
-  else if (Self.SlotAmount(ItemSlot) < ItemAmount) then
-    Exit(False);
-
-  Self.ClickButton(WithdrawMode, mouse_Left);
-  Self.ClickButton(Quantity, mouse_Left);
-
-  t := GetTickCount() + Random(5000, 6000);
-  repeat
-    Mouse.Move(Self.GetSlotBox(ItemSlot));
-
-    if ItemAmount > 4 then
-    begin
-      if Self.IsUpText([IntToStr(ItemAmount)]) then
-        Mouse.Click(mouse_Left)
-      else
-        Self.Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawMode, Quantity);
-    end
-
-    else
-
-    begin
-      if (ItemAmount > 0) and (Quantity = BANK_BUTTON_QUANTITY_ONE) then
-      begin
-        for i := 1 to ItemAmount do
-        begin
-          Mouse.Click(mouse_left);
-          Wait(100, 250);
-        end;
-      end
-      else
-      begin
-        if ItemAmount = -1 then
-          UpText := 'All'
-        else
-          UpText := IntToStr(ItemAmount);
-
-        if Self.IsUpText([UpText]) then
-          Mouse.Click(mouse_left)
-        else
-          Self.Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawMode, Quantity);
-      end;
-    end;
-
-    if (t > GetTickCount()) then
-      Break;
-    if ItemAmount = -1 then
-      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, CurrentItemAmount, 1200, __GT__)
-    else
-      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, (CurrentItemAmount + ItemAmount), 1200);
-  until WaitAmountBoolean;
-
-  Result := Inventory.WaitSlotAmount(InvSlot, CurrentItemAmount, 0, __GT__) ;
-end;
-
-function TRSBankScreen.WithdrawDTM2(Tab: EBankTab; DTM, NoteDTM: Integer; ItemAmount: Int32 = -1; SubStrings: TStringArray; Quantity: EBankButton = BANK_BUTTON_QUANTITY_ONE; Stackable: Boolean): Boolean; overload;
-var
-  i, ItemSlot, CurrentItemAmount, InvSlot: Int32;
-  t: UInt64;
-  WaitAmountBoolean: Boolean;
-  WithdrawMode: EBankButton = BANK_BUTTON_WITHDRAW_NOTE;
-  UpText: String;
-begin
-  if not Self.IsOpen() then
-    Exit(False);
-
-  ChooseOption.Close();
-
-  if Inventory.Contains(NoteDTM) then
-  begin
-    InvSlot := Inventory.FindDTM(NoteDTM)[0];
-    CurrentItemAmount := Inventory.SlotAmount(InvSlot);
-  end
-  else if not Inventory.HasSpace(1) then
-    Exit(False)
-  else
-  begin
-    InvSlot := Inventory.GetEmptySlots()[0];
-    CurrentItemAmount := 0;
-  end;
-
-  ItemSlot := Self.ScrollToDTM(Tab, DTM);
-
-  if (ItemSlot < 0) then
-    Exit(False)
-  else if (ItemAmount = -1) and (Self.SlotAmount(ItemSlot) < 1) then
-    Exit(False)
-  else if (Self.SlotAmount(ItemSlot) < ItemAmount) then
-    Exit(False);
-
-  Self.ClickButton(WithdrawMode, mouse_Left);
-  Self.ClickButton(Quantity, mouse_Left);
-
-  t := GetTickCount() + Random(5000, 6000);
-  repeat
-    Mouse.Move(Self.GetSlotBox(ItemSlot));
-
-    if ItemAmount > 4 then
-    begin
-      if Self.IsUpText([IntToStr(ItemAmount)]) then
-        Mouse.Click(mouse_Left)
-      else
-        Self.Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawMode, Quantity);
-    end
-
-    else
-
-    begin
-      if (ItemAmount > 0) and (Quantity = BANK_BUTTON_QUANTITY_ONE) then
-      begin
-        for i := 1 to ItemAmount do
-        begin
-          Mouse.Click(mouse_left);
-          Wait(100, 250);
-        end;
-      end
-      else
-      begin
-        if ItemAmount = -1 then
-          UpText := 'All'
-        else
-          UpText := IntToStr(ItemAmount);
-
-        if Self.IsUpText([UpText]) then
-          Mouse.Click(mouse_left)
-        else
-          Self.Withdraw(ItemSlot, ItemAmount, SubStrings, WithdrawMode, Quantity);
-      end;
-    end;
-
-    if (t > GetTickCount()) then
-      Break;
-    if ItemAmount = -1 then
-      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, CurrentItemAmount, 1200, __GT__)
-    else
-      WaitAmountBoolean := Inventory.WaitSlotAmount(InvSlot, (CurrentItemAmount + ItemAmount), 1200);
-  until WaitAmountBoolean;
-
-  Result := Inventory.WaitSlotAmount(InvSlot, CurrentItemAmount, 0, __GT__) ;
-end;
-
-// See TRSBankScreen.FindSecondDTM
+// See TRSBankScreen.FindSecondDTM.  NEED REWORK
 function TRSBankScreen.WithdrawSecondDTMFromTab(Tab: EBankTab; DTM: Integer; ItemAmount: Int32 = 1337; SubStrings: TStringArray; AmountBtn: EBankButton = BANK_BUTTON_QUANTITY_ONE): Boolean;
 var
   i, item_slot, inv_count: Int32;
@@ -1114,14 +993,4 @@ begin
 
   Result := True;
 
-end;
-
-
-procedure BankScreen.Free();
-begin
-  FreeDTM(NoteDTM);
-end;
-
-begin
-  AddOnTerminate(@BankScreen.Free);
 end;
