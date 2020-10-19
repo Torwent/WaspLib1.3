@@ -70,6 +70,31 @@ begin
   Result := Self.SlotAmount(Self.FindDTM(DTM)[0]);
 end;
 
+function TRSInventory.WaitDTMFade(Slot: Int32; DTM: Integer; WaitTime: UInt32 = 0): Boolean;
+var
+  i: Int32;
+  t: UInt64;
+  Slots: TIntArray;
+begin
+  if not Self.IsSlotUsed(Slot) then
+    Exit(False);
+
+  t := GetTickCount() + WaitTime;
+  repeat
+    Slots := Self.FindDTM(DTM);
+    for i := 0 to High(Slots) do
+    begin
+      if (Slots[i] = Slot) then
+        Exit(True);
+    end;
+    if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+
+  Result := False;
+end;
+
+
 // Returns true only if it has all DTMs in the inventory
 function TRSInventory.Contains(DTMs: TIntArray): Boolean; overload;
 var
