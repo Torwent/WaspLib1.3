@@ -2,6 +2,9 @@ type
   EBankLoc = (blCastleWars, blGrandExchange, blFeroxEnclave);
   TWaspBanking = record
     Location: EBankLoc;
+    ClosestBankTile: TPoint;
+    ClosestBankTiles: TPointArray;
+    ClosestBankColor: TCTS2Color;
   end;
 
 var
@@ -52,10 +55,6 @@ var
 
   CraftGuildBank := Point(3554, 3328);
   CraftGuildBankColor := CTS2(4475747, 15, 0.27, 1.09); // THIS IS JUST A PLACEHOLDER. NEEDS PROPER VALUES FIRST.
-
-  ClosestBankTile: TPoint;
-  ClosestBankTiles: TPointArray;
-  ClosestBankColor: TCTS2Color;
 
 // Tries to open a bank with the specified Color at the specified Tile.
 // Returns true if bankscreen is open.
@@ -125,21 +124,27 @@ begin
     ClosestBankColor := EdgeBankColor;
   end
 
-  else if WaspWalker.AtLocation(WaspRSW, GEBank, 100) then
-  begin
-    BankRSW.InitEx('world', [[3, 5], [3, 6]]);
-    ClosestBankTiles := WaspWalker.GetClosestTile(BankRSW, GEBank);
-    ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
-    ClosestBankColor := GEStructureColor;
-  end
-
   else if WaspWalker.AtLocation(WaspRSW, CWBank, 100) then
   begin
     BankRSW.InitEx('world', [[5, 1], [5, 2]]);
     ClosestBankTiles := [CWBank];
     ClosestBankTile := CWBank;
     ClosestBankColor := CWBankColor;
+  end
+
+  else
+  begin
+    BankRSW.InitEx('world', [[3, 5], [3, 6]]);
+    if WaspWalker.AtLocation(BankRSW, GEBank, 100) then
+    begin
+      ClosestBankTiles := WaspWalker.GetClosestTile(BankRSW, GEBank);
+      ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
+      ClosestBankColor := GEStructureColor;
+    end
+    else
+      TerminateScript('Cant find location');
   end;
+
 
   if DisableWorldWalker then WaspRSW.Free();
 end;
