@@ -61,14 +61,14 @@ var
 function WaspBanking.OpenBank(Tile: TPoint; Color: TCTS2Color): Boolean;
 begin
   if Obj.Click(BankRSW, Tile, Color, ['Bank', 'booth', 'chest']) then
-    Result := BankScreen.IsOpen() or PinScreen.IsOpen();
+    Result := BankScreen.IsOpen(800) or PinScreen.IsOpen();
 end;
 
 // Same as above for multiple tiles.
 function WaspBanking.OpenBank(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
 begin
   if Obj.Click(BankRSW, Tiles, Color, ['Bank', 'booth', 'chest']) then
-    Result := BankScreen.IsOpen() or PinScreen.IsOpen();
+    Result := BankScreen.IsOpen(800) or PinScreen.IsOpen();
 end;
 
 // Tries to open the collect box at bank with the specified Color at the specified Tile.
@@ -76,7 +76,7 @@ end;
 function WaspBanking.OpenCollectBox(Tile: TPoint; Color: TCTS2Color): Boolean;
 begin
   if Obj.SelectOption(BankRSW, Tile, Color, ['Collect', 'Bank', 'booth', 'chest']) then
-    Result := CollectBox.IsOpen() or PinScreen.IsOpen();
+    Result := CollectBox.IsOpen(1200) or PinScreen.IsOpen();
 end;
 
 function WaspBanking.OpenCollectBox(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
