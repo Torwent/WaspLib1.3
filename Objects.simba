@@ -69,6 +69,7 @@ begin
     Result += ATPA[0].MinAreaRect;
 end;
 
+
 // Searches for a color in a certain tile and hovers it if found.
 function TMSObject.Hover(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean;
 var
@@ -184,6 +185,123 @@ begin
     Result := False;
 end;
 
+
+function TMSObject.WalkHover(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 5; DoSort: Boolean = True): Boolean;
+var
+  Rectangles: array of TRectangle;
+  Rectangle: TRectangle;
+  i: Int32;
+  t: UInt64;
+begin
+  if not WaspWalker.TileVisible(Map, Tile) then
+  begin
+    WaspWalker.WalkToTile2(Map, Tile, 10);
+    Mouse.Move(MainScreen.GetPlayerBox());
+    WaspWalker.UntilTileVisible(Map, Tile, 3000);
+  end;
+  Result := False;
+
+  for i := 1 to Attempts do
+  begin
+    Obj := [[Tile], Color, 200, 8];
+
+    t := GetTickCount() + 3000;
+    repeat
+      Rectangles := Obj.Find(Map, DoSort, 20);
+      if (GetTickCount() >= t) then
+        Exit(False);
+    until Rectangles;
+    Rectangle := Rectangles[Random(0, High(Rectangles))];
+
+    mouse.Move(SRL.RandomPoint(Rectangle));
+
+    if MainScreen.IsUpText(SubStrs) then
+      Exit(True);
+  end;
+
+  Result := MainScreen.IsUpText(SubStrs);
+end;
+
+function TMSObject.WalkHover(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 5; DoSort: Boolean = True): Boolean; overload;
+var
+  Rectangles: array of TRectangle;
+  Rectangle: TRectangle;
+  i: Int32;
+  t: UInt64;
+begin
+  if not WaspWalker.TileVisible(Map, Tiles) then
+  begin
+    WaspWalker.WalkToTile2(Map, Tiles[Random(0, High(Tiles))], 10);
+    Mouse.Move(MainScreen.GetPlayerBox());
+    WaspWalker.UntilTileVisible(Map, Tiles, 3000);
+  end;
+  Result := False;
+
+  for i := 1 to Attempts do
+  begin
+    Obj := [Tiles, Color, 200, 8];
+
+    t := GetTickCount() + 3000;
+    repeat
+      Rectangles := Obj.Find(Map, DoSort, 20);
+      if (GetTickCount() >= t) then
+        Exit(False);
+    until Rectangles;
+    Rectangle := Rectangles[Random(0, High(Rectangles))];
+
+    mouse.Move(SRL.RandomPoint(Rectangle));
+
+    if MainScreen.IsUpText(SubStrs) then
+      Exit(True);
+  end;
+
+  Result := MainScreen.IsUpText(SubStrs);
+end;
+
+function TMSObject.WalkClick(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; LeftClick: Boolean = True; Attempts: Int32 = 5; DoSort: Boolean = True): Boolean;
+begin
+  if not Self.WalkHover(Map, Tile, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  Result := (LeftClick and Mouse.Click(ctRed)) or ChooseOption.Open();
+end;
+
+function TMSObject.WalkClick(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; LeftClick: Boolean = True; Attempts: Int32 = 5; DoSort: Boolean = True): Boolean; overload
+begin
+  if not Self.WalkHover(Map, Tiles, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  Result := (LeftClick and Mouse.Click(ctRed)) or ChooseOption.Open();
+end;
+
+function TMSObject.WalkSelectOption(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean;
+begin
+  if not Self.WalkHover(Map, Tile, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  if MainScreen.IsUpText(SubStrs[0]) then
+    Result := Mouse.Click(ctRed)
+  else if ChooseOption.Open() then
+    Result := ChooseOption.Select(SubStrs[0])
+  else
+    Result := False;
+end;
+
+function TMSObject.WalkSelectOption(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean; overload;
+begin
+  if not Self.WalkHover(Map, Tiles, Color, SubStrs, Attempts, DoSort) then
+    Exit(False);
+
+  if MainScreen.IsUpText(SubStrs[0]) then
+    Result := Mouse.Click(ctRed)
+  else if ChooseOption.Open() then
+    Result := ChooseOption.Select(SubStrs[0])
+  else
+    Result := False;
+end;
+
+
+
 procedure TMSObject.Debug(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; DoSort: Boolean = True);
 var
   BMP, i: Integer;
@@ -265,3 +383,94 @@ begin
   ShowBitmap(BMP);
   FreeBitmap(BMP);
 end;
+
+
+
+
+
+
+procedure TMSObject.DebugOverlay(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; DoSort: Boolean = True);
+var
+  Overlay: TWindowOverlay;
+  Bmp: TMufasaBitmap;
+  i: Int32;
+  TileBox, RectangleBox: TBox;
+  Rectangles: array of TRectangle;
+  RectanglesTPA: TPointArray;
+  t: UInt64;
+begin
+  if not WaspWalker.TileVisible(Map, Tile) then
+    Exit();
+
+  Obj := [[Tile], Color, 200, 8];
+
+  t := GetTickCount() + 3000;
+  repeat
+    Rectangles := Obj.Find(Map, DoSort, 15);
+    if (GetTickCount() >= t) then
+      Exit();
+  until Rectangles;
+
+  for i := 0 to High(Rectangles) do
+  begin
+    RectangleBox := Rectangles[i].Bounds();
+    RectanglesTPA += EdgeFromBox(RectangleBox);
+  end;
+
+
+  Overlay := TWindowOverlay.CreateOverlay();
+  Bmp := Overlay.Bitmap;
+
+  TileBox := Map.GetTileMS(Tile).Bounds();
+
+  Bmp.DrawTPA(EdgeFromBox(TileBox), 255);
+  Bmp.DrawTPA(RectanglesTPA, 0);
+  Bmp.Clear();
+end;
+
+// NEED TO FIX THIS
+procedure TMSObject.DebugOverlay(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; DoSort: Boolean = True); overload;
+var
+  BMP, i: Integer;
+  TileBox, RectangleBox: TBox;
+  Rectangles: array of TRectangle;
+  RectanglesTPA: TPointArray;
+  t: UInt64;
+begin
+  if not WaspWalker.TileVisible(Map, Tiles) then
+    Exit();
+
+  BMP := BitmapFromClient(GetClientBounds());
+
+  for i:=0 to High(Tiles) do
+  begin
+
+    Obj := [[Tiles[i]], Color, 200, 8];
+    t := GetTickCount() + 3000;
+    repeat
+      Rectangles := Obj.Find(Map, DoSort, 15);
+      if (GetTickCount() >= t) then
+        Exit();
+    until Rectangles;
+
+    TileBox := Map.GetTileMS(Tiles[i]).Bounds();
+
+    for i := 0 to High(Rectangles) do
+    begin
+      RectangleBox := Rectangles[i].Bounds();
+      RectanglesTPA += EdgeFromBox(RectangleBox);
+    end;
+
+
+    DrawTPABitmap(BMP, EdgeFromBox(TileBox), 255);
+    DrawTPABitmap(BMP, RectanglesTPA, 0);
+
+
+  end;
+
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+
+
+

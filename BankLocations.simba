@@ -18,7 +18,7 @@ var
   VWestBank4 := Point(4554, 2705);
 
   VWestBank := [VWestBank0, VWestBank1, VWestBank2, VWestBank3, VWestBank4];
-  VWBankColor := CTS2(998986, 12, 0.13, 2.87);
+  VWestBankColor := CTS2(998986, 12, 0.13, 2.87);
 
   GEWestBank0 := Point(4459, 2487);
   GEWestBank1 := Point(4459, 2491);
@@ -58,31 +58,59 @@ var
 
 // Tries to open a bank with the specified Color at the specified Tile.
 // Returns true if bankscreen is open.
-function WaspBanking.OpenBank(Tile: TPoint; Color: TCTS2Color): Boolean;
+function WaspBanking.OpenBank(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color): Boolean;
 begin
-  if Obj.Click(BankRSW, Tile, Color, ['Bank', 'booth', 'chest']) then
+  if Obj.Click(Map, Tile, Color, ['Bank', 'booth', 'chest']) then
     Result := BankScreen.IsOpen(800) or PinScreen.IsOpen();
 end;
 
 // Same as above for multiple tiles.
-function WaspBanking.OpenBank(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
+function WaspBanking.OpenBank(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
 begin
-  if Obj.Click(BankRSW, Tiles, Color, ['Bank', 'booth', 'chest']) then
+  if Obj.Click(Map, Tiles, Color, ['Bank', 'booth', 'chest']) then
     Result := BankScreen.IsOpen(800) or PinScreen.IsOpen();
+end;
+
+function WaspBanking.WalkOpenBank(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color): Boolean;
+begin
+  if Obj.WalkClick(Map, Tile, Color, ['Bank', 'booth', 'chest']) then
+    Map.WaitPlayerMoving(4000);
+  Result := BankScreen.IsOpen(1000) or PinScreen.IsOpen();
+end;
+
+function WaspBanking.WalkOpenBank(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color): Boolean; overload
+begin
+  if Obj.WalkClick(Map, Tiles, Color, ['Bank', 'booth', 'chest']) then
+    Map.WaitPlayerMoving(4000);
+  Result := BankScreen.IsOpen(1000) or PinScreen.IsOpen();
 end;
 
 // Tries to open the collect box at bank with the specified Color at the specified Tile.
 // Returns true if collect box is open.
-function WaspBanking.OpenCollectBox(Tile: TPoint; Color: TCTS2Color): Boolean;
+function WaspBanking.OpenCollectBox(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color): Boolean;
 begin
-  if Obj.SelectOption(BankRSW, Tile, Color, ['Collect', 'Bank', 'booth', 'chest']) then
-    Result := CollectBox.IsOpen(1200) or PinScreen.IsOpen();
+  if Obj.SelectOption(Map, Tile, Color, ['Collect', 'Bank', 'booth', 'chest']) then
+    Result := CollectBox.IsOpen(800) or PinScreen.IsOpen();
 end;
 
-function WaspBanking.OpenCollectBox(Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
+function WaspBanking.OpenCollectBox(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
 begin
-  if Obj.SelectOption(BankRSW, Tiles, Color, ['Collect', 'Bank', 'booth', 'chest']) then
-    Result := CollectBox.IsOpen() or PinScreen.IsOpen();
+  if Obj.SelectOption(Map, Tiles, Color, ['Collect', 'Bank', 'booth', 'chest']) then
+    Result := CollectBox.IsOpen(800) or PinScreen.IsOpen();
+end;
+
+function WaspBanking.WalkOpenCollectBox(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color): Boolean;
+begin
+  if Obj.WalkSelectOption(Map, Tile, Color, ['Collect', 'Bank', 'booth', 'chest']) then
+    Map.WaitPlayerMoving(4000);
+  Result := CollectBox.IsOpen(1000) or PinScreen.IsOpen();
+end;
+
+function WaspBanking.WalkOpenCollectBox(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color): Boolean; overload;
+begin
+  if Obj.WalkSelectOption(Map, Tiles, Color, ['Collect', 'Bank', 'booth', 'chest']) then
+    Map.WaitPlayerMoving(4000);
+  Result := CollectBox.IsOpen(1000) or PinScreen.IsOpen();
 end;
 
 
@@ -97,7 +125,7 @@ begin
     BankRSW.InitEx('world', [[3, 5], [3, 6]]);
     ClosestBankTiles := VWestBank;
     ClosestBankTile := ClosestBankTiles[Random(0, High(ClosestBankTiles))];
-    ClosestBankColor := VWBankColor;
+    ClosestBankColor := VWestBankColor;
   end
 
   else if WaspWalker.AtLocation(WaspRSW, FWestBank, 100) then
@@ -157,7 +185,7 @@ begin
   if not WaspWalker.AtLocation(BankRSW, ClosestBankTile) then
     Exit(False);
 
-  Result := Self.OpenBank(ClosestBankTile, ClosestBankColor);
+  Result := Self.OpenBank(BankRSW, ClosestBankTile, ClosestBankColor);
 end;
 
 // Opens the closest bank collect box supported by WaspBanking.
@@ -167,7 +195,7 @@ begin
   if not WaspWalker.AtLocation(BankRSW, ClosestBankTile) then
     Exit(False);
 
-  Result := Self.OpenCollectBox(ClosestBankTile, ClosestBankColor);
+  Result := Self.OpenCollectBox(BankRSW, ClosestBankTile, ClosestBankColor);
 end;
 
 
