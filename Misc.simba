@@ -2,7 +2,6 @@ type
   TWasp = record
     Antiban: TAntiban;
     StatsDebugTick: Int64;
-    Action: String;
   end;
 
 var
@@ -41,6 +40,17 @@ begin
   Result := IntToStr(Round(Number));
   for i := 0 to (CharAmount - Result.Len()) do
     Result += ' ';
+end;
+
+function GetPrice(Item: String): Int32;
+var
+  Link, Price: String;
+begin
+  Item := Replace(LowerCase(Item), ' ', '-',[rfReplaceAll]);
+
+  Link := GetPage('https://www.ge-tracker.com/item/' + Item);
+  Price:= between('<td id="item_stat_overall">','</td>', Link);
+  Result := StrToIntDef(replace(Price, ',', '', [rfReplaceAll]), 0);
 end;
 
 
