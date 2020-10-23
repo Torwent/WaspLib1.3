@@ -39,12 +39,12 @@ begin
 end;
 
 
-function WaspWalker.TileVisible(Map: TRSWalker = WaspRSW; Tile: TPoint): Boolean;
+function WaspWalker.TileVisible(Map: TRSWalker; Tile: TPoint): Boolean;
 begin
   Result := Mainscreen.FBounds.Contains(Map.GetTileMS(Tile));
 end;
 
-function WaspWalker.TileVisible(Map: TRSWalker = WaspRSW; Tiles: TPointArray): Boolean; overload;
+function WaspWalker.TileVisible(Map: TRSWalker; Tiles: TPointArray): Boolean; overload;
 var
   i: Int32;
 begin
@@ -52,6 +52,34 @@ begin
   for i := 0 to High(Tiles) do
     if Self.TileVisible(Map, Tiles[i]) then
       Exit(True);
+end;
+
+function WaspWalker.UntilTileVisible(Map: TRSWalker; Tile: TPoint; WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self.TileVisible(Map, Tile)) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
+end;
+
+function WaspWalker.UntilTileVisible(Map: TRSWalker; Tiles: TPointArray; WaitTime: UInt32 = 0): Boolean; overload;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if (Self.TileVisible(Map, Tiles)) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Wait(Random(25, 50));
+  until (GetTickCount() >= t);
 end;
 
 // Compares Tiles with the Player position and returns the closest one.
@@ -93,6 +121,33 @@ begin
 end;
 
 
+function WaspWalker.CompensateMousePos(CurrentTile, DestinationTile: Tpoint): TPoint;
+var
+  Point: TPoint;
+begin
+
+  if CurrentTile.X > DestinationTile.X then
+    Point.X := DestinationTile.X + 4
+  else if CurrentTile.X < DestinationTile.X then
+    Point.X := DestinationTile.X - 4
+  else
+    Point.X := DestinationTile.X;
+
+  if CurrentTile.Y > DestinationTile.Y then
+    Point.Y := DestinationTile.Y + 4
+  else if CurrentTile.Y < DestinationTile.Y then
+    Point.Y := DestinationTile.X - 4
+  else
+    Point.Y := DestinationTile.Y;
+  Result := Point;
+end;
+
+function WaspWalker.CompensateMousePos(Map: TRSWalker; DestinationTile: Tpoint): TPoint; overload;
+begin
+  Result := Self.CompensateMousePos(Map.GetMyPos(), DestinationTile);
+end;
+
+
 function WaspWalker.WalkToTile(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 10): Boolean;
 begin
 
@@ -102,8 +157,131 @@ begin
   if ((Minimap.GetRunEnergy() > Random(40, 60)) and (not Minimap.isRunEnabled())) then
     Minimap.ToggleRun(True);
 
-  Result := Map.WalkPath([Tile], 3);
+  Result := Map.WalkPath([Tile], Distance);
 end;
+
+procedure WaspWalker.WalkToTile2(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 10);
+begin
+  if Self.AtLocation(Map, Tile, Distance) then
+    Exit();
+
+  if (Minimap.GetRunEnergy() > Random(40, 60)) and not Minimap.isRunEnabled() then
+    Minimap.ToggleRun(True);
+
+  Map.WalkStep(Tile, Distance, False);
+end;
+
+
+
+function TRSWalker.WalkPathAlching(Path: TPointArray; InvSlot: Int32 = 11; ClickRnd:Int32=4; FinalCorrection:Boolean=False): Boolean;
+var
+  i,j,h,prev,tmp,attempts: Int32;
+  nearest,distance: Double;
+  mmPos, myPos: TPoint;
+  t: TCountDown;
+
+  function RandomizeRunEnergy(e:Int32):Int32;
+  begin
+    if e > 100 then Exit();
+    Result := Random(max(5,e-10), e+10);
+  end;
+begin
+  if Self.WorldMap = nil then
+    RaiseException('TRSWalker.WalkPath -> RSWalker is not set up for this task!');
+
+  self.Enabled := True;
+  tmp := self.MinRunEnergy;
+
+  // get start point in path
+  myPos := Self.GetMyPos();
+  nearest := 100000;
+  for j:=0 to High(path) do
+  begin
+    distance := Hypot(path[j].x-myPos.x, path[j].y-myPos.y);
+    if (distance < nearest) then
+    begin
+      nearest := distance;
+      i := j;
+    end;
+  end;
+
+  // generate a dense path from starting point
+  FPath := Copy(path, i, Length(path)-i);
+  FPath := RSWUtils.BuildPath([myPos]+FPath, 1,6);
+
+  // do the walk
+  t.Init(Random(23000, 27000));
+  FPathIdx := 0;
+  H := High(FPath);
+  while (FPathIdx < H) and (not t.IsFinished())  do
+  begin
+    self.minRunEnergy := RandomizeRunEnergy(self.minRunEnergy);
+    myPos := Self.GetMyPos();
+
+    if not Self.ScreenWalk then
+    begin
+      while (FPathIdx < H) and (Hypot(myPos.x-FPath[FPathIdx+1].x, myPos.y-FPath[FPathIdx+1].y) < MM_RAD) do
+        Inc(FPathIdx);
+    end else
+    begin
+      while (FPathIdx < H) and Mainscreen.FBounds.Contains(Minimap.PointToMs(FPath[FPathIdx+1] - myPos + minimap.Center)) do
+        Inc(FPathIdx);
+    end;
+
+    if prev = FPathIdx then
+    begin
+      Inc(attempts);
+      if attempts > 7 then
+      begin
+        self.MinRunEnergy := tmp;
+        Exit(False);
+      end;
+    end else
+      attempts := 0;
+
+    mmPos := FPath[FPathIdx] - myPos + minimap.Center;
+
+    if Assigned(@self.onWalkEvent) then
+    begin
+      self.onWalkEvent(@self, myPos);
+      if not(self.Enabled) then
+      begin
+        self.MinRunEnergy := tmp;
+        Exit(True);
+      end;
+    end;
+
+    self.WalkToPos(mmPos, ClickRnd, FPathIdx<>h);
+    if not(self.Enabled) then
+    begin
+      self.MinRunEnergy := tmp;
+      Exit(True);
+    end;
+
+    prev := FPathIdx;
+    t.Init(Random(20000, 25000));
+  end;
+
+  self.WaitPlayerMoving();
+  myPos  := Self.GetMyPos();
+  Result := Hypot(myPos.x-FPath[h].x, myPos.y-FPath[h].y) < 16;
+
+  if Result and FinalCorrection then
+  begin
+    distance := Hypot(myPos.x-FPath[h].x, myPos.y-FPath[h].y);
+    if (distance < MM_RAD) and (distance > 6) then
+    begin
+      mmPos.x := (FPath[h].x - myPos.x) + Minimap.Center.X;
+      mmPos.y := (FPath[h].y - myPos.y) + Minimap.Center.Y;
+      self.WalkToPos(mmPos, 1, True);
+      self.WaitPlayerMoving();
+    end;
+  end;
+
+  self.minRunEnergy := tmp;
+end;
+
+
 
 function WaspWalker.GotTeleported(WaitTime: UInt32 = 2400): Boolean;
 var
