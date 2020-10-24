@@ -1,5 +1,5 @@
 {$include_once overrides.simba}
-{$include_once WaspOverlay.simba}
+//{$include_once WaspOverlay.simba}
 {$include_once Interfaces/MainScreenExtra.simba}
 {$include_once Interfaces/GameTabs/InventoryExtra.simba}
 {$include_once Interfaces/GameTabs/EquipmentExtra.simba}
