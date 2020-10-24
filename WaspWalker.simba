@@ -172,8 +172,53 @@ begin
 end;
 
 
+procedure TRSWalker.WalkToPosAlching(mmPos:TPoint; Rnd:Int32=0; doRand:Boolean=False; InvSlot: Int32 = 11);
+var
+  i,st: Int64;
+  t: TCountDown;
+  flag: TPoint;
+  B: TBox;
+  skipDist: Double;
+begin
+  mmPos := RotatePoint(mmPos, Minimap.GetCompassAngle(False), Minimap.Center.X, Minimap.Center.Y);
+  skipDist := srl.SkewedRand(skipClose, 10, MM_RAD);
 
-function TRSWalker.WalkPathAlching(Path: TPointArray; InvSlot: Int32 = 11; ClickRnd:Int32=4; FinalCorrection:Boolean=False): Boolean;
+  if (doRand) then
+    while (Rnd > 1) and (Hypot(mmPos.x-Minimap.Center.X, mmPos.y-Minimap.Center.Y) >= MM_RAD - Rnd*Sqrt(2)) do
+      Dec(Rnd);
+
+  if not Self.ScreenWalk then
+    mouse.Click(mmPos, rnd, mouse_left)
+  else begin
+    B := Minimap.PointToMsBox(mmPos);
+    B.LimitTo(Mainscreen.GetBounds);  //fucking self-alterting procedures (I did not make these!)
+    mouse.Click(B, mouse_left);
+  end;
+
+  Spells.AlchSlot(InvSlot);
+
+  Wait(300,500);
+  t.Init(25000);
+  repeat
+    if  (i mod 2 = 0) and (Minimap.GetRunEnergy >= self.MinRunEnergy) then
+      Minimap.ToggleRun(True);
+
+    if Minimap.FindFlag(flag) then
+    begin
+      if (flag.DistanceTo(Minimap.Center) < skipDist) then
+        Break;
+    end else if (Self.GetMyPos().DistanceTo(FPath[FPathIdx]) < skipDist) then
+      Break;
+
+    st := GetTickCount() + Random(60);
+    if Assigned(@self.onMoveEvent) then
+      self.onMoveEvent(@self);
+    Wait( Max(1, st-GetTickCount()) );
+
+  until (not self.Enabled) or (not Minimap.IsPlayerMoving(Self.MinimapShift)) or (t.IsFinished());
+end;
+
+function TRSWalker.WalkPathAlching(Path: TPointArray; InvSlot: Int32 = 11; ClickRnd: Int32 = 4; FinalCorrection: Boolean= False): Boolean;
 var
   i,j,h,prev,tmp,attempts: Int32;
   nearest,distance: Double;
@@ -251,7 +296,9 @@ begin
       end;
     end;
 
-    self.WalkToPos(mmPos, ClickRnd, FPathIdx<>h);
+    self.WalkToPosAlching(mmPos, ClickRnd, FPathIdx<>h);
+
+
     if not(self.Enabled) then
     begin
       self.MinRunEnergy := tmp;
@@ -281,7 +328,17 @@ begin
   self.minRunEnergy := tmp;
 end;
 
+function WaspWalker.WalkToTileAlching(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 10; InvSlot: Int32 = 11): Boolean;
+begin
 
+  if Self.AtLocation(Map, Tile, Distance) then
+    Exit(True);
+
+  if ((Minimap.GetRunEnergy() > Random(40, 60)) and (not Minimap.isRunEnabled())) then
+    Minimap.ToggleRun(True);
+
+  Result := Map.WalkPathAlching([Tile], Distance, InvSlot);
+end;
 
 function WaspWalker.GotTeleported(WaitTime: UInt32 = 2400): Boolean;
 var

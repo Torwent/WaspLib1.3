@@ -144,6 +144,32 @@ begin
 end;
 
 
+
+function Spells.AlchSlot(InvSlot: Int32 = 11): Boolean;
+begin
+  Spells.Open();
+
+  if not Spells.CanActivate(CAST_HIGH_LEVEL_ALCHEMY) then
+    Exit(False);
+
+  Spells.Cast(CAST_HIGH_LEVEL_ALCHEMY);
+  if not Inventory.IsOpen(2000) then
+    Exit(False);
+
+  if Inventory.GetActiveSlot() > -1 then
+  begin
+    Inventory.MouseSlot(Inventory.GetActiveSlot(), mouse_Left);
+    Exit(False);
+  end;
+
+  if not Inventory.IsSlotUsed(InvSlot) then
+    Exit(False);
+
+  Inventory.MouseSlot(InvSlot, mouse_Left);
+  Result := Spells.IsOpen(2000);
+end;
+
+
 function Spells.WasCasted(): Boolean;
 var
   pt: TPoint;
