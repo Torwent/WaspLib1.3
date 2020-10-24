@@ -209,7 +209,10 @@ begin
     repeat
       Rectangles := Obj.Find(Map, DoSort, 20);
       if (GetTickCount() >= t) then
+      begin
+        Minimap.RandomCompass(-180, 180);
         Exit(False);
+      end;
     until Rectangles;
     Rectangle := Rectangles[Random(0, High(Rectangles))];
 
@@ -219,7 +222,7 @@ begin
       Exit(True);
   end;
 
-  Result := MainScreen.IsUpText(SubStrs);
+  Result :=MainScreen.IsUpText(SubStrs);
 end;
 
 function TMSObject.WalkHover(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 5; DoSort: Boolean = True): Boolean; overload;
@@ -388,7 +391,7 @@ end;
 
 
 
-
+{$ifdecl WaspOverlay}
 procedure TMSObject.DebugOverlay(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; DoSort: Boolean = True);
 var
   Overlay: TWindowOverlay;
@@ -471,6 +474,6 @@ begin
   ShowBitmap(BMP);
   FreeBitmap(BMP);
 end;
-
+{$endif}
 
 
