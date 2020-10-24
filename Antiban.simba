@@ -9,7 +9,7 @@ begin
   DebugNote('[RND] Hovering players');
   if Wasp.IsInterfaceOpen() then
     Wasp.CloseInterface();
-  srl.HoverRandomPlayer(25);
+  srl.HoverRandomPlayer(40 * Biohash);
 end;
 
 procedure TAntiban.CheckSkill(); override;
@@ -24,7 +24,7 @@ begin
   if Length(ActiveSkills) > 0 then
   begin
     Skill := Self.ActiveSkills[Random(Length(Self.ActiveSkills))];
-    Stats.HoverSkill(Skill, srl.GaussRand(2500,300), Random(3)=0);
+    Stats.HoverSkill(Skill, srl.GaussRand(4500 * Biohash, 300), Random(3)=0);
   end;
 end;
 
@@ -37,9 +37,9 @@ begin
 
   Stats.Open();
   if Random(4)=0 then
-    Stats.HoverSkill(Random(SKILL_TOTAL), srl.GaussRand(3000,300))
+    Stats.HoverSkill(Random(SKILL_TOTAL), srl.GaussRand(5000 * Biohash, 300))
   else
-    WaitEx(3000,300);
+    WaitEx(5000 * Biohash,300);
   if Random(2) = 0 then
     Inventory.Open();
 end;
@@ -52,7 +52,7 @@ begin
     Wasp.CloseInterface();
 
   Gametabs.Open(EGametab(Random(High(Gametabs.Tabs))));
-  WaitEx(1600,100);
+  WaitEx(3200 * Biohash, 100);
   if Random(4) = 0 then Inventory.Open()
   else if Random(4) = 0 then Stats.Open();
 end;
@@ -61,7 +61,7 @@ procedure TAntiban.VeryShortBreak(); override;
 begin
   DebugNote('[RND] Taking a breather');
   if(Random(2)=0) then SRL.LoseFocus();
-  WaitEx(30000,5000);
+  WaitEx(50000 * Biohash, 5000);
   SRL.SetFocus();
   Players.GetCurrent()^.Login();
   Wait(60,600, wdLeft);
@@ -84,18 +84,18 @@ begin
     if Random(3) = 0 then
       Gametabs.Open(EGametab(Random(High(Gametabs.Tabs))));
 
-    WaitEx(1500,200);
+    WaitEx(3000 * Biohash, 200);
     if(Random(8) = 0) then
     begin
       if(Random(2) = 0) then SRL.LoseFocus();
-      WaitEx(40000,4500);
+      WaitEx(50000 * Biohash, 4500);
       SRL.SetFocus();
     end;
 
     if(Random(3) = 0) then
     begin
       Self.CheckStats();
-      WaitEx(2000,200);
+      WaitEx(4000 * Biohash, 200);
     end;
   end;
 end;
@@ -104,7 +104,7 @@ end;
 // Focus antibans
 procedure TAntiban.LoseFocusShort();
 begin
-  DebugNote('[RND] Losing focus');
+  DebugNote('[RND] Losing focus short');
   SRL.LoseFocus();
   Players.GetCurrent()^.Login();
   // Assuming you are using {$I SRL/utils/rsclient.simba} you shouldn't need to use SRL.SetFocus.
@@ -160,7 +160,7 @@ begin
   BankScreen.OpenTab(EBankTab(Random(0, BankScreen.CountTabs())));
 
   if RandomBoolean(70) then
-    Wait(1500, 2500)
+    Wait(5000 * Biohash, 4000 * Biohash)
   else
     Self.RandomBankItemMisc();
 
@@ -185,7 +185,7 @@ begin
   else
     BankScreen.ClickButton(BANK_BUTTON_REARRANGE_SWAP);
 
-  Wait(1500, 3000);
+  Wait(3000 * Biohash, 6000 * Biohash);
 
   if BankScreen.IsToggled(BANK_BUTTON_REARRANGE_SWAP) then
     BankScreen.ClickButton(BANK_BUTTON_REARRANGE_INSERT)
@@ -201,7 +201,7 @@ begin
   else
     BankScreen.ClickButton(BANK_BUTTON_WITHDRAW_ITEM);
 
-  Wait(1500, 3000);
+  Wait(3000 * Biohash, 6000 * Biohash);
 
   if BankScreen.IsToggled(BANK_BUTTON_WITHDRAW_ITEM) then
     BankScreen.ClickButton(BANK_BUTTON_WITHDRAW_NOTE)
@@ -224,11 +224,11 @@ begin
 
   BankScreen.ClickButton(EBankButton(Random(4, 8)));
 
-  Wait(1500, 3000);
+  Wait(3000 * Biohash, 6000 * Biohash);
   if Random(0, 5) = 5 then
   begin
     BankScreen.ClickButton(EBankButton(Random(4, 8)));
-    Wait(150, 250);
+    Wait(350 * Biohash, 500 * Biohash);
   end;
 
   BankScreen.ClickButton(CurrentQuantity);
@@ -237,7 +237,7 @@ end;
 
 procedure TAntiban.RandomBankItemMisc();
 begin
-  if RandomBoolean(75) then
+  if RandomBoolean(Round(100 * Biohash)) then
     Self.RandomBankItemHovering()
   else
     Self.RandomBankItemRightClick();
@@ -259,7 +259,7 @@ begin
   until BankScreen.ItemIn(Slot);
 
   Mouse.Move(BankScreen.GetSlotBox(Slot));
-  Wait(600, 2000);
+  Wait(1000 * Biohash, 3000 * Biohash);
 end;
 
 procedure TAntiban.RandomBankItemRightClick();
@@ -282,9 +282,9 @@ begin
 
   Mouse.Move(BankScreen.GetSlotBox(Slot));
   ChooseOption.Open();
-  if RandomBoolean(70) then
+  if RandomBoolean(Round(100 * Biohash)) then
   begin
-    Wait(600, 1500);
+    Wait(1200 * Biohash, 3000 * Biohash);
     ChooseOption.Close();
   end
   else
@@ -296,7 +296,7 @@ end;
 // Random cliking antibans
 procedure TAntiban.RandomRightClick();
 begin
-  if Random(0, 100) > Random(35, 45) then
+  if RandomBoolean(Round(100 * Biohash)) then
     Self.RightClickMS()
   else
     Self.RightClickChat();
@@ -309,7 +309,7 @@ begin
     Exit();
   Mouse.Move(Chatbox.FBounds);
   ChooseOption.Open();
-  Wait(300, 3000, wdLeft);
+  Wait(800 * Biohash, 6000 * Biohash, wdLeft);
   ChooseOption.Close();
 end;
 
@@ -318,7 +318,7 @@ begin
   DebugNote('[RND] Right clicking mainscreen');
   Mouse.Move(MainScreen.FBounds);
   ChooseOption.Open();
-  Wait(300, 3000, wdLeft);
+  Wait(800 * Biohash, 6000 * Biohash, wdLeft);
   ChooseOption.Close();
 end;
 
@@ -330,13 +330,13 @@ begin
   if Minimap.isRunEnabled() then
   begin
     Minimap.ToggleRun(false);
-    Wait(500, 2500);
+    Wait(1000 * Biohash, 4000 * Biohash);
     Minimap.ToggleRun(true);
   end
     else
   begin
     Minimap.ToggleRun(true);
-    Wait(500, 2500);
+    Wait(1000 * Biohash, 4000 * Biohash);
     Minimap.ToggleRun(false);
   end;
 end;
@@ -347,13 +347,13 @@ begin
   if Minimap.isPrayerEnabled() then
   begin
     Minimap.TogglePrayer(false);
-    Wait(500, 1500, wdLeft);
+    Wait(1000 * Biohash, 4000 * Biohash);
     Minimap.TogglePrayer(true);
   end
     else
   begin
     Minimap.TogglePrayer(true);
-    Wait(500, 1500, wdLeft);
+    Wait(1000 * Biohash, 4000 * Biohash);
     Minimap.TogglePrayer(false);
   end;
 end;
@@ -380,7 +380,16 @@ end;
 procedure TAntiban.ChatScrolling();
 begin
   DebugNote('[RND] Random scrolling on chat');
-  Chatbox.RandomScroll();
+  Self.RandomScroll();
+end;
+
+function TAntiban.RandomScroll(): Boolean;
+begin
+  case Random(0, 2) of
+    0: Result := Chatbox.ScrollUp(Round(Random(2000 * Biohash, 4000 * Biohash)));
+    1: Result := Chatbox.ScrollDown(Round(Random(3000 * Biohash, 4000 * Biohash)));
+    2: Result := Chatbox.ScrollDown(Round(Random(3500 * Biohash, 5000 * Biohash)));
+  end;
 end;
 
 procedure TAntiban.ToggleChatTab();
@@ -390,7 +399,7 @@ begin
   DebugNote('[RND] Toggling Chat Tabs');
   CurrentTab := Chatbox.GetActiveTab();
   Self.RandomChatTab();
-  Wait(1500, 3000);
+  Wait(3000 * Biohash, 5000 * Biohash);
   Chatbox.ClickTab(CurrentTab);
 end;
 
@@ -461,8 +470,8 @@ begin
   P.X := RandomRange(B.X1, B.X2);
   P.Y := RandomRange(B.Y1, B.Y2);
   Mouse.Move(P);
-  Wait(1000,5000);
-  Mouse.Scroll(20, true);
+  Wait(2000 * Biohash, 8000 * Biohash);
+  Mouse.Scroll(Round(30 * Biohash), true);
 end;
 
 
@@ -485,52 +494,11 @@ begin
   if ChooseOption.Open() then
     ChooseOption.Select(['Check']);
 
-  Chatbox.ScrollDown(5000);
+  Chatbox.ScrollDown(6000);
 end;
 
 
-
-
-function Wasp.SetupAntiban(Skills: TIntArray; RunTime: Integer): Boolean;
-var
-  anti: TAntiban;
-begin
-  Antiban := anti;
-  srl.StartTime := GetTickCount();
-
-  Result := Antiban.Init(Skills, 4);
-
-  Antiban.AddTask([@Antiban.LoseFocusShort, ONE_MINUTE * 5, 0.33]);
-  Antiban.AddTask([@Antiban.RandomBankItemMisc, ONE_MINUTE * 7, 0.33]);
-  Antiban.AddTask([@Antiban.RandomCompass, ONE_MINUTE * 10, 0.33]);
-  Antiban.AddTask([@Antiban.ToggleBankTab, ONE_MINUTE * 16, 0.33]);
-  Antiban.AddTask([@Antiban.ChatScrolling, ONE_MINUTE * 18, 0.33]);
-  Antiban.AddTask([@Antiban.RandomMouseOffClient, ONE_MINUTE * 20, 0.33]);
-  if InIntArray(Skills, SKILL_WOODCUTTING) or
-     InIntArray(Skills, SKILL_MINING) or InIntArray(Skills, SKILL_FISHING) then
-    Antiban.AddTask([@Antiban.CheckInfernalTool, ONE_MINUTE * 25, 0.33]);
-  Antiban.AddTask([@Antiban.LoseFocus, ONE_MINUTE * 27, 0.33]);
-  Antiban.AddTask([@Antiban.CheckSkill, ONE_MINUTE * 30, 0.33]);
-  Antiban.AddTask([@Antiban.ToggleChatTab, ONE_MINUTE * 33, 0.33]);
-  Antiban.AddTask([@Antiban.DoMiscStuff, ONE_MINUTE * 40, 0.33]);
-  Antiban.AddTask([@Antiban.ToggleBankRearrangeButtons, ONE_MINUTE * 45, 0.33]);
-  Antiban.AddTask([@Antiban.OpenRandomTab, ONE_MINUTE * 50, 0.33]);
-  Antiban.AddTask([@Antiban.RandomRightClick, ONE_HOUR * 1, 0.33]);
-  Antiban.AddTask([@Antiban.ToggleChatTab, ONE_HOUR * 2, 0.33]);
-  Antiban.AddTask([@Antiban.ToggleRun, ONE_HOUR * 2, 0.33]);
-  Antiban.AddTask([@Antiban.CheckStats, ONE_HOUR * 3, 0.33]);
-
-  if (RunTime >= (3 * ONE_HOUR)) then
-    Antiban.AddBreak([45 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
-
-  if (RunTime >= (12 * ONE_HOUR)) then
-    Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.33]);
-
-  if (RunTime >= (1 * ONE_DAY)) then
-    Antiban.AddBreak([12 * ONE_HOUR, 12 * ONE_HOUR, 0.35, 0.33]);
-end;
-
-function Wasp.SetupAntiban(Skill: Int32; RunTime: Integer): Boolean; overload
+function Wasp.SetupAntiban(Skill: Int32; RunTime: Integer): Boolean;
 var
   anti: TAntiban;
 begin
@@ -560,11 +528,52 @@ begin
 
 
   if (RunTime >= (3 * ONE_HOUR)) then
-    Antiban.AddBreak([45 * ONE_MINUTE, 5 * ONE_MINUTE, 0.05, 0.25]);
+    Antiban.AddBreak([45 * ONE_MINUTE, 5 * ONE_MINUTE, 0.15, 0.25]);
 
   if (RunTime >= (12 * ONE_HOUR)) then
     Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.33]);
 
   if (RunTime >= (1 * ONE_DAY)) then
-    Antiban.AddBreak([12 * ONE_HOUR, 12 * ONE_HOUR, 0.35, 0.33]);
+    Antiban.AddBreak([16 * ONE_HOUR, 8 * ONE_HOUR, 0.85, 0.33]);
 end;
+
+function Wasp.SetupAntiban(Skills: TIntArray; RunTime: Integer): Boolean; overload;
+var
+  anti: TAntiban;
+begin
+  Antiban := anti;
+  srl.StartTime := GetTickCount();
+
+  Result := Antiban.Init(Skills, 4);
+
+  Antiban.AddTask([@Antiban.LoseFocusShort, ONE_MINUTE * 5, 0.33]);
+  Antiban.AddTask([@Antiban.RandomBankItemMisc, ONE_MINUTE * 7, 0.33]);
+  Antiban.AddTask([@Antiban.RandomCompass, ONE_MINUTE * 10, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleBankTab, ONE_MINUTE * 16, 0.33]);
+  Antiban.AddTask([@Antiban.ChatScrolling, ONE_MINUTE * 18, 0.33]);
+  Antiban.AddTask([@Antiban.RandomMouseOffClient, ONE_MINUTE * 20, 0.33]);
+  if InIntArray(Skills, SKILL_WOODCUTTING) or
+     InIntArray(Skills, SKILL_MINING) or InIntArray(Skills, SKILL_FISHING) then
+    Antiban.AddTask([@Antiban.CheckInfernalTool, ONE_MINUTE * 25, 0.33]);
+  Antiban.AddTask([@Antiban.LoseFocus, ONE_MINUTE * 27, 0.33]);
+  Antiban.AddTask([@Antiban.CheckSkill, ONE_MINUTE * 30, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleChatTab, ONE_MINUTE * 33, 0.33]);
+  Antiban.AddTask([@Antiban.DoMiscStuff, ONE_MINUTE * 40, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleBankRearrangeButtons, ONE_MINUTE * 45, 0.33]);
+  Antiban.AddTask([@Antiban.OpenRandomTab, ONE_MINUTE * 50, 0.33]);
+  Antiban.AddTask([@Antiban.RandomRightClick, ONE_HOUR * 1, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleChatTab, ONE_HOUR * 2, 0.33]);
+  Antiban.AddTask([@Antiban.ToggleRun, ONE_HOUR * 2, 0.33]);
+  Antiban.AddTask([@Antiban.CheckStats, ONE_HOUR * 3, 0.33]);
+
+  if (RunTime >= (3 * ONE_HOUR)) then
+    Antiban.AddBreak([45 * ONE_MINUTE, 5 * ONE_MINUTE, 0.15, 0.25]);
+
+  if (RunTime >= (12 * ONE_HOUR)) then
+    Antiban.AddBreak([2 * ONE_HOUR, 35 * ONE_MINUTE, 0.35, 0.33]);
+
+  if (RunTime >= (1 * ONE_DAY)) then
+    Antiban.AddBreak([16 * ONE_HOUR, 8 * ONE_HOUR, 0.85, 0.33]);
+end;
+
+
