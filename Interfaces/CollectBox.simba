@@ -117,6 +117,7 @@ begin
   FreeBitmap(BMP);
 end;
 
+{$ifdecl WaspOverlay}
 procedure CollectBox.DebugOverlay();
 var
   Overlay: TWindowOverlay;
@@ -137,7 +138,7 @@ begin
   for i := 0 to High(FButtons) do
     Bmp.DrawTPA(EdgeFromBox(FButtons[i]), $00FF00);
 end;
-
+{$endif}
 
 function CollectBox._Find(): Boolean;
 const
