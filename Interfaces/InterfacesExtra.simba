@@ -1,0 +1,45 @@
+type
+  TCommonInterface = record(TInterfaceBase)
+    FButtons: array [ELampButton] of TBox;
+  end;
+
+var
+  CommonInterface: TCommonInterface;
+  CloseButtonDTM := DTMFromString('mwQAAAHic42RgYHjGyMDwCIhfAfFDIH4JxG+B+A4UfwBicaA6ISiWBmIZIFYEYnkg5oViBgZGIjCVAQDySQj5');
+
+function CommonInterface.IsInterfaceOpen(): Boolean;
+var
+  x, y: Integer;
+begin
+  Result := FindDTM(CloseButtonDTM, x, y, 420, 3, 515, 100) or PinScreen.IsOpen();
+end;
+
+function CommonInterface.CloseInterface(): Boolean;
+begin
+  Result := False;
+  if not Self.IsInterfaceOpen() then
+    Exit(True);
+
+  if BankScreen.IsOpen() then
+    Result := BankScreen.Close()
+  else if PinScreen.IsOpen() then
+  begin
+    PinScreen.EnterPin();
+    Result := BankScreen.Close();
+  end
+  else if SmithingScreen.IsOpen2() then
+    Result := SmithingScreen.Close()
+  else if ShopScreen.IsOpen() then
+    Result := ShopScreen.Close();
+end;
+
+
+
+procedure CommonInterface.Free();
+begin
+  FreeDTM(CloseButtonDTM);
+end;
+
+begin
+  AddOnTerminate(@CommonInterface.Free);
+end;

@@ -8,7 +8,6 @@ var
   Wasp: TWasp;
   CraftCapeDTM := DTMFromString('mggAAAHicY2NgYJjCxMAwA4inAXE/EM8C4qlA/Bgo9wqI3wHxeyC+B8SfgVhUUJAhxEGPIT3ACshjRMLkAAAg3Qr7');
   DuelRingDTM := DTMFromString('mggAAAHicY2NgYNjJxMCwHYh3APEBIN4ExAeBuIGRgaEDiLuAuBWIW4C4FojvHpQCYwYGRjgW7BNlIA8AAE1QC7M=');
-  CloseButtonDTM := DTMFromString('mwQAAAHic42RgYHjGyMDwCIhfAfFDIH4JxG+B+A4UfwBicaA6ISiWBmIZIFYEYnkg5oViBgZGIjCVAQDySQj5');
 
 function RandomBoolean(Probability: Int32 = 50): Boolean;
 begin
@@ -54,6 +53,7 @@ begin
 end;
 
 
+
 function Wasp.HasItem(DTM: Integer; Equippable: Boolean = True; MouseMove: Boolean = True): Boolean;
 var
   InvCheck, EquipCheck: Boolean = False;
@@ -96,48 +96,9 @@ begin
 end;
 
 
-
-function Wasp.IsInterfaceOpen(): Boolean;
-var
-  x, y: Integer;
-begin
-  Result := FindDTM(CloseButtonDTM, x, y, 420, 3, 515, 100) or PinScreen.IsOpen();
-end;
-
-function Wasp.CloseInterface(): Boolean;
-begin
-  Result := False;
-  if not Self.IsInterfaceOpen() then
-    Exit(True);
-
-  if BankScreen.IsOpen() then
-    Result := BankScreen.Close()
-  else if PinScreen.IsOpen() then
-  begin
-    PinScreen.EnterPin();
-    Result := BankScreen.Close();
-  end
-  else if SmithingScreen.IsOpen2() then
-    Result := SmithingScreen.Close()
-  else if ShopScreen.IsOpen() then
-    Result := ShopScreen.Close();
-end;
-
-
-procedure Wasp.DebugPlayerBox();
-var
-  BMP: Integer;
-begin
-  BMP := BitmapFromClient(GetClientBounds());
-  DrawTPABitmap(BMP, EdgeFromBox(MainScreen.GetPlayerBox()), 255);
-  ShowBitmap(BMP);
-  FreeBitmap(BMP);
-end;
-
-
 procedure Wasp.Free();
 begin
-  FreeDTMs([CraftCapeDTM, DuelRingDTM, CloseButtonDTM]);
+  FreeDTMs([CraftCapeDTM, DuelRingDTM]);
 end;
 
 begin

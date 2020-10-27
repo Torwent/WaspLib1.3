@@ -3,3 +3,14 @@ begin
   with Self.GetMiddle() do
     Result := [X - 120, Y - 120, X + 120, Y + 120];
 end;
+
+procedure TRSMainScreen.DebugPlayerBox();
+var
+  BMP: Integer;
+begin
+  BMP := BitmapFromClient(GetClientBounds());
+  DrawTPABitmap(BMP, EdgeFromBox(MainScreen.GetPlayerBox()), 255);
+  ShowBitmap(BMP);
+  FreeBitmap(BMP);
+end;
+

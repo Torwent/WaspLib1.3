@@ -7,8 +7,8 @@
 procedure TAntiban.HoverPlayers(); override;
 begin
   DebugNote('[RND] Hovering players');
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
   srl.HoverRandomPlayer(40 * Biohash);
 end;
 
@@ -18,8 +18,8 @@ var
 begin
   DebugNote('[RND] Check Skill Stats');
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   if Length(ActiveSkills) > 0 then
   begin
@@ -32,8 +32,8 @@ procedure TAntiban.CheckStats(); override;
 begin
   DebugNote('[RND] Look at Stats');
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   Stats.Open();
   if Random(4)=0 then
@@ -48,8 +48,8 @@ procedure TAntiban.OpenRandomTab(); override;
 begin
   DebugNote('[RND] Open Random Tab');
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   Gametabs.Open(EGametab(Random(High(Gametabs.Tabs))));
   WaitEx(3200 * Biohash, 100);
@@ -66,8 +66,8 @@ begin
   Players.GetCurrent()^.Login();
   Wait(60,600, wdLeft);
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   if Random(4) = 0 then Self.CheckSkill();
 end;
@@ -76,8 +76,8 @@ procedure TAntiban.DoMiscStuff(); override;
 begin
   DebugNote('[RND] Doing misc stuff');
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   for 0 to Random(2) do
   begin
@@ -364,8 +364,8 @@ var
 begin
   DebugNote('[RND] Toggling Accept Aid');
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   if not Options.isOpen() then
     Options.Open();
@@ -460,8 +460,8 @@ var
 begin
   DebugNote('[RND] Random Zoom');
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   B := MainScreen.GetBounds();
   P.X := RandomRange(B.X1, B.X2);
@@ -480,8 +480,8 @@ procedure TAntiban.CheckInfernalTool();
 begin
   DebugNote('[RND] Check Infernal/Crystal tool charges');
 
-  if Wasp.IsInterfaceOpen() then
-    Wasp.CloseInterface();
+  if CommonInterface.IsInterfaceOpen() then
+    CommonInterface.CloseInterface();
 
   if not Equipment.IsSlotUsed(4) then
     Exit();
