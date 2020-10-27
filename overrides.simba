@@ -114,6 +114,63 @@ begin
     Result := Degrees(Result);
 end;
 
+procedure TRSMinimap.SetCompassAngle_Key(Degrees: Double); override;
+var
+  Keys: record Left, Right: Boolean; end;
+
+  procedure HoldKey;
+  var
+    Distance: Double;
+  begin
+    Distance := Round(Minimap.GetCompassAngle() - Degrees);
+
+    RSClient.SetFocus();
+
+    case ((Distance > 0) and (Abs(Distance) <= 180)) or ((Distance < 0) and (Abs(Distance) > 180)) of
+      True:
+        begin
+          if Keys.Right then
+            Keyboard.KeyUp(VK_RIGHT);
+          if (not Keys.Left) then
+            Keyboard.KeyDown(VK_LEFT);
+
+          Keys := [True, False];
+        end;
+
+      False:
+        begin
+         if Keys.Left then
+           Keyboard.KeyUp(VK_LEFT);
+         if (not Keys.Right) then
+           Keyboard.KeyDown(VK_RIGHT);
+
+         Keys := [False, True];
+       end;
+    end;
+  end;
+
+var
+  T: UInt64;
+begin
+  T := GetTickCount64() + 10000;
+
+  try
+    while srl.isLoggedIn() and (Round(Abs(srl.DeltaAngle(Minimap.GetCompassAngle(), Degrees))) > 5) do
+    begin
+      if (GetTickCount() > T) then
+        RaiseException('SetCompassAngle_Key timed out');
+      HoldKey();
+      Wait(Random(50, 100));
+      if not srl.isLoggedIn() then Exit();
+    end;
+  finally
+    if (Keys.Left) then
+       Keyboard.KeyUp(VK_LEFT);
+    if (Keys.Right) then
+      Keyboard.KeyUp(VK_RIGHT);
+  end;
+end;
+
 
 procedure TRSWorldArray.Load; override;
 var
@@ -123,7 +180,7 @@ var
   i: Int32;
 begin
   List := MultiBetween(GetPage('http://oldschool.runescape.com/slu'), '<tr class=''server-list__row', '</tr>');
-
+  Writeln(List);
   for i := 0 to High(List) do
   begin
     // [0]URL
