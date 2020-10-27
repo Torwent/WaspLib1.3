@@ -266,7 +266,7 @@ begin
   if not Self.WalkHover(Map, Tile, Color, SubStrs, Attempts, DoSort) then
     Exit(False);
 
-  Result := (LeftClick and Mouse.Click(ctRed)) or ChooseOption.Open();
+  Result := (LeftClick and Mouse.Click(ctRed)) or (ChooseOption.Open() and ChooseOption.Select(SubStrs[0]));
 end;
 
 function TMSObject.WalkClick(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; LeftClick: Boolean = True; Attempts: Int32 = 5; DoSort: Boolean = True): Boolean; overload
@@ -274,7 +274,7 @@ begin
   if not Self.WalkHover(Map, Tiles, Color, SubStrs, Attempts, DoSort) then
     Exit(False);
 
-  Result := (LeftClick and Mouse.Click(ctRed)) or ChooseOption.Open();
+  Result := (LeftClick and Mouse.Click(ctRed)) or (ChooseOption.Open() and ChooseOption.Select(SubStrs[0]));
 end;
 
 function TMSObject.WalkSelectOption(Map: TRSWalker; Tile: TPoint; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 2; DoSort: Boolean = True): Boolean;
