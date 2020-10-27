@@ -377,7 +377,6 @@ begin
   FreeBitmap(BMP);
 end;
 
-
 procedure WaspWalker.LoadMapSlices(Map: String; Slices: TPointArray);
 begin
    WaspRSW.Free();
