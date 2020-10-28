@@ -180,7 +180,6 @@ var
   i: Int32;
 begin
   List := MultiBetween(GetPage('http://oldschool.runescape.com/slu'), '<tr class=''server-list__row', '</tr>');
-  Writeln(List);
   for i := 0 to High(List) do
   begin
     // [0]URL
