@@ -1,0 +1,20 @@
+function TRSGrandExch.GetAllAvailable(): TIntArray;
+var
+  i: Int32;
+begin
+  Result := [];
+  for i := 0 to High(GrandExchange.ExchTables) do
+    if GrandExchange.Available(i) then
+      Result += i;
+end;
+
+function TRSGrandExch.GetAvailable(): Int32;
+var
+  SlotsArray: TIntArray;
+begin
+  SlotsArray := GrandExchange.GetAllAvailable();
+  if SlotsArray = [] then
+    Result := -1
+  else
+    Result := SlotsArray[0];
+end;

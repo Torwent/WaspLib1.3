@@ -1,4 +1,4 @@
-{$include_once overrides.simba}
+{$include_once Overrides.simba}
 //{$include_once WaspOverlay.simba}
 {$include_once Interfaces/MainScreenExtra.simba}
 {$include_once Interfaces/GameTabs/InventoryExtra.simba}
@@ -20,3 +20,5 @@
 {$include_once WaspWalker.simba}
 {$include_once Objects.simba}
 {$include_once BankLocations.simba}
+{$include_once Interfaces/GrandExchExtra.simba}
+
