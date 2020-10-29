@@ -197,7 +197,7 @@ begin
   begin
     WaspWalker.WalkToTile2(Map, Tile, 10);
     Mouse.Move(MainScreen.GetPlayerBox());
-    WaspWalker.UntilTileVisible(Map, Tile, 3000);
+    WaspWalker.UntilTileVisible(Map, Tile, 2000);
   end;
   Result := False;
 
@@ -222,7 +222,7 @@ begin
       Exit(True);
   end;
 
-  Result :=MainScreen.IsUpText(SubStrs);
+  Result := MainScreen.IsUpText(SubStrs);
 end;
 
 function TMSObject.WalkHover(Map: TRSWalker; Tiles: TPointArray; Color: TCTS2Color; SubStrs: TStringArray; Attempts: Int32 = 5; DoSort: Boolean = True): Boolean; overload;
@@ -236,7 +236,7 @@ begin
   begin
     WaspWalker.WalkToTile2(Map, Tiles[Random(0, High(Tiles))], 10);
     Mouse.Move(MainScreen.GetPlayerBox());
-    WaspWalker.UntilTileVisible(Map, Tiles, 3000);
+    WaspWalker.UntilTileVisible(Map, Tiles, 2000);
   end;
   Result := False;
 
