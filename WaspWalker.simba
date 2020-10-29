@@ -82,6 +82,48 @@ begin
   until (GetTickCount() >= t);
 end;
 
+function WaspWalker.WalkUntilTileVisible(Map: TRSWalker; Tile: TPoint; MaxDistance: Int32 = 10; WaitTime: UInt32 = 0): Boolean;
+var
+  t: UInt64;
+begin
+  if Self.TileVisible(Map, Tile) and Self.AtLocation(Map, Tile, MaxDistance) then
+    Exit(True);
+
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    Self.WalkToTile2(Map, Tile, 10);
+    Mouse.Move(MainScreen.GetPlayerBox());
+    if Self.TileVisible(Map, Tile) and Self.AtLocation(Map, Tile, MaxDistance) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Map.WaitPlayerMoving(1600);
+  until (GetTickCount() >= t);
+
+  Result := Self.TileVisible(Map, Tile) and Self.AtLocation(Map, Tile, MaxDistance);
+end;
+
+function WaspWalker.WalkUntilTileVisible(Map: TRSWalker; Tiles: TPointArray; MaxDistance: Int32 = 10; WaitTime: UInt32 = 0): Boolean; overload;
+var
+  t: UInt64;
+begin
+  if Self.TileVisible(Map, Tiles) and Self.AtLocation(Map, Tiles, MaxDistance) then
+    Exit(True);
+
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    Self.WalkToTile2(Map, Tiles[Random(0, High(Tiles))], 10);
+    Mouse.Move(MainScreen.GetPlayerBox());
+    if Self.TileVisible(Map, Tiles) and Self.AtLocation(Map, Tiles, MaxDistance) then
+      Exit(True)
+    else if (WaitTime > 0) then
+      Map.WaitPlayerMoving(1600);
+  until (GetTickCount() >= t);
+
+  Result := Self.TileVisible(Map, Tiles) and Self.AtLocation(Map, Tiles, MaxDistance);
+end;
+
 // Compares Tiles with the Player position and returns the closest one.
 // If the Distance is the same for more than one, a random one will be returned.
 function WaspWalker.GetClosestTile(Map: TRSWalker = WaspRSW; Tiles: TPointArray): TPoint;
