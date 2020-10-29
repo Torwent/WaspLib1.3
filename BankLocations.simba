@@ -15,7 +15,7 @@ var
   VWestBank1 := Point(4553, 2680);
   VWestBank2 := Point(4553, 2688);
   VWestBank3 := Point(4553, 2696);
-  VWestBank4 := Point(4554, 2705);
+  VWestBank4 := Point(4554, 2703);
 
   VWestBank := [VWestBank0, VWestBank1, VWestBank2, VWestBank3, VWestBank4];
   VWestBankColor := CTS2(998986, 12, 0.13, 2.87);
