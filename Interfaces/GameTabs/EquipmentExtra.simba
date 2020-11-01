@@ -1,7 +1,13 @@
+// This seems a bit silly but it can be used to find which slot is an item equipped.
 function TRSEquipment.FindDTM(DTM: Integer): TIntArray;
 begin
   if Self.Open() then
     Result := srl.FindDTMInTBA(DTM, Self.FBoxes, 1);
+end;
+
+function TRSEquipment.Contains(DTM: Integer): Boolean; overload;
+begin
+  Result := Length(Self.FindDTM(DTM)) <> 0;
 end;
 
 
