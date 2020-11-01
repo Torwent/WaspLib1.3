@@ -43,8 +43,22 @@ begin
   end;
 end;
 
+function TMSObject.FindOnTile(Map: TRSWalker = WaspRSW; Tile: TPoint; ObjColor: TCTS2Color; Expand: Int32 = 0): Boolean;
+var
+  Me: TPoint;
+  Rect: TRectangle;
+  TPA: TPointArray;
+begin
+  Me := Map.GetMyPos();
+
+  Rect := Map.GetTileMSEx(Me, Tile, 1).Expand(Expand);
+  if MainScreen.GetBounds.Contains(Rect.Bounds) then
+    Result := srl.FindColors(TPA, ObjColor, Rect.Bounds) < Self.MinCount;
+end;
+
+
 // Same as above but without RSWalker... useful for some stuff and should be faster too.
-function TMSObject.FindMS(DoSort: Boolean = True): TRectArray; overload;
+function TMSObject.FindMS(Color: TCTS2Color; DoSort: Boolean = True): TRectArray; overload;
 var
   Me: TPoint;
   TPA: TPointArray;
@@ -66,7 +80,9 @@ begin
   ATPA := TPA.Cluster(8);
   ATPA.SortByMiddle(Rect.Mean);
   if ATPA then
-    Result += ATPA[0].MinAreaRect;
+    Result += ATPA[0].MinAreaRect
+  else
+    Result := []
 end;
 
 
@@ -78,7 +94,7 @@ var
   i: Int32;
   t: UInt64;
 begin
-  if not WaspWalker.TileVisible(Map, Tile) then
+  if not WaspWalker.RotateUntilTileVisible(Map, Tile) then
     Exit(False);
 
   Result := False;
@@ -113,7 +129,7 @@ var
   i: Int32;
   t: UInt64;
 begin
-  if not WaspWalker.TileVisible(Map, Tiles) then
+  if not WaspWalker.RotateUntilTileVisible(Map, Tiles) then
     Exit(False);
 
   Result := False;
@@ -193,7 +209,7 @@ var
   i: Int32;
   t: UInt64;
 begin
-  if not WaspWalker.TileVisible(Map, Tile) then
+  if not WaspWalker.RotateUntilTileVisible(Map, Tile) then
   begin
     WaspWalker.WalkToTile2(Map, Tile, 10);
     Mouse.Move(MainScreen.GetPlayerBox());
@@ -232,7 +248,7 @@ var
   i: Int32;
   t: UInt64;
 begin
-  if not WaspWalker.TileVisible(Map, Tiles) then
+  if not WaspWalker.RotateUntilTileVisible(Map, Tiles) then
   begin
     WaspWalker.WalkToTile2(Map, Tiles[Random(0, High(Tiles))], 10);
     Mouse.Move(MainScreen.GetPlayerBox());

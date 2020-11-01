@@ -82,6 +82,137 @@ begin
   until (GetTickCount() >= t);
 end;
 
+function WaspWalker.RotateUntilTileVisible(Map: TRSWalker; Tile: TPoint): Boolean;
+var
+  Keys: record Left, Right: Boolean; end;
+  Degrees: Double;
+
+  procedure HoldKey;
+  var
+    Distance: Double;
+  begin
+    Distance := Round(Minimap.GetCompassAngle() - Degrees);
+
+    case ((Distance > 0) and (Abs(Distance) <= 180)) or ((Distance < 0) and (Abs(Distance) > 180)) of
+      True:
+        begin
+          if Keys.Right then
+            Keyboard.KeyUp(VK_RIGHT);
+          if (not Keys.Left) then
+            Keyboard.KeyDown(VK_LEFT);
+
+          Keys := [True, False];
+        end;
+
+      False:
+        begin
+         if Keys.Left then
+           Keyboard.KeyUp(VK_LEFT);
+         if (not Keys.Right) then
+           Keyboard.KeyDown(VK_RIGHT);
+
+         Keys := [False, True];
+       end;
+    end;
+  end;
+
+var
+  T: UInt64;
+begin
+  if Self.TileVisible(Map, Tile) then
+    Exit(True)
+  else if not Self.AtLocation(Map, Tile, 25) then
+    Exit(False);
+
+  T := GetTickCount64() + 5000;
+
+  if RandomBoolean() then Degrees := 180 else Degrees := -180;
+
+  try
+    while (Round(Abs(srl.DeltaAngle(Minimap.GetCompassAngle(), Degrees))) > 5) or
+          not Self.TileVisible(Map, Tile) do
+    begin
+      if (GetTickCount() > T) then
+        RaiseException('SetCompassAngle_Key timed out');
+      HoldKey();
+      Wait(Random(50, 100));
+    end;
+  finally
+    if (Keys.Left) then
+       Keyboard.KeyUp(VK_LEFT);
+    if (Keys.Right) then
+      Keyboard.KeyUp(VK_RIGHT);
+  end;
+
+  Result := Self.TileVisible(Map, Tile);
+end;
+
+function WaspWalker.RotateUntilTileVisible(Map: TRSWalker; Tiles: TPointArray): Boolean; overload;
+var
+  Keys: record Left, Right: Boolean; end;
+  Degrees: Double;
+
+  procedure HoldKey;
+  var
+    Distance: Double;
+  begin
+    Distance := Round(Minimap.GetCompassAngle() - Degrees);
+
+    case ((Distance > 0) and (Abs(Distance) <= 180)) or ((Distance < 0) and (Abs(Distance) > 180)) of
+      True:
+        begin
+          if Keys.Right then
+            Keyboard.KeyUp(VK_RIGHT);
+          if (not Keys.Left) then
+            Keyboard.KeyDown(VK_LEFT);
+
+          Keys := [True, False];
+        end;
+
+      False:
+        begin
+         if Keys.Left then
+           Keyboard.KeyUp(VK_LEFT);
+         if (not Keys.Right) then
+           Keyboard.KeyDown(VK_RIGHT);
+
+         Keys := [False, True];
+       end;
+    end;
+  end;
+
+var
+  T: UInt64;
+begin
+  if Self.TileVisible(Map, Tiles) then
+    Exit(True)
+  else if not Self.AtLocation(Map, Tiles, 25) then
+    Exit(False);
+
+  T := GetTickCount64() + 5000;
+
+  if RandomBoolean() then Degrees := 180 else Degrees := -180;
+
+  try
+    while (Round(Abs(srl.DeltaAngle(Minimap.GetCompassAngle(), Degrees))) > 5) or
+          not Self.TileVisible(Map, Tiles) do
+    begin
+      if (GetTickCount() > T) then
+        RaiseException('SetCompassAngle_Key timed out');
+      HoldKey();
+      Wait(Random(50, 100));
+    end;
+  finally
+    if (Keys.Left) then
+       Keyboard.KeyUp(VK_LEFT);
+    if (Keys.Right) then
+      Keyboard.KeyUp(VK_RIGHT);
+  end;
+
+  Result := Self.TileVisible(Map, Tiles);
+end;
+
+
 function WaspWalker.WalkUntilTileVisible(Map: TRSWalker; Tile: TPoint; MaxDistance: Int32 = 10; WaitTime: UInt32 = 0): Boolean;
 var
   t: UInt64;
@@ -202,15 +333,17 @@ begin
   Result := Map.WalkPath([Tile], Distance);
 end;
 
-procedure WaspWalker.WalkToTile2(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 10);
+function WaspWalker.WalkToTile2(Map: TRSWalker = WaspRSW; Tile: TPoint; Distance: Int32 = 10): Boolean;
 begin
-  if Self.AtLocation(Map, Tile, Distance) then
-    Exit();
+  if Self.AtLocation(Map, Tile, Distance) then Exit(True);
 
   if (Minimap.GetRunEnergy() > Random(40, 60)) and not Minimap.isRunEnabled() then
     Minimap.ToggleRun(True);
 
-  Map.WalkStep(Tile, Distance, False);
+  if Map.WalkStep(Tile, Distance, False) then
+    Exit(False);
+  Map.WaitPlayerMoving();
+  Result := Self.AtLocation(Map, Tile, Distance);
 end;
 
 
@@ -237,9 +370,11 @@ begin
     mouse.Click(B, mouse_left);
   end;
 
+  Wait(200, 300);
   Spells.AlchSlot(InvSlot);
+  Wait(100, 200);
 
-  Wait(300,500);
+
   t.Init(25000);
   repeat
     if  (i mod 2 = 0) and (Minimap.GetRunEnergy >= self.MinRunEnergy) then
@@ -382,17 +517,17 @@ begin
   Result := Map.WalkPathAlching([Tile], Distance, InvSlot);
 end;
 
-function WaspWalker.GotTeleported(WaitTime: UInt32 = 2400): Boolean;
+function WaspWalker.GotTeleported(Map: TRSWalker = WaspRSW; WaitTime: UInt32 = 2400): Boolean;
 var
   t: UInt64;
   StartPos: TPoint;
 begin
   t := GetTickCount() + WaitTime;
-  StartPos := WaspRSW.GetMyPos();
+  StartPos := Map.GetMyPos();
   Result := False;
   Wait(WaitTime);
   repeat
-    if (WaspRSW.GetMyPos.DistanceTo(StartPos) > 25) then
+    if (Map.GetMyPos.DistanceTo(StartPos) > 15) then
       Exit(True)
     else if (WaitTime > 0) then
       Wait(Random(25, 50));
