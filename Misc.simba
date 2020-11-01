@@ -87,36 +87,8 @@ begin
 end;
 
 function ConvertToRSGP(Amount: Extended): String; overload;
-var
-  StringLength: Int32;
-  Divider: UInt32;
-  Suffix: String;
 begin
-  Result := '';
-  StringLength := Length(FloatToStr(Amount));
-  if StringLength <= 3 then
-  begin
-    Suffix := '';
-    Divider := 1;
-  end
-  if (StringLength >= 4) and (StringLength <= 6) then
-  begin
-    Suffix := 'k';
-    Divider := 1000;
-  end
-  else if (StringLength >= 7) and (StringLength <= 9) then
-  begin
-    Suffix := 'm';
-    Divider := 1000000;
-  end
-  else if (StringLength >= 10) and (StringLength <= 12) then
-  begin
-    Suffix := 'b';
-    Divider := 1000000000;
-  end
-  else Exit();
-
-  Result := FloatToStr(Round(Amount/Divider, 2)) + Suffix;
+  Result := ConvertToRSGP(Trunc(Amount));
 end;
 
 
