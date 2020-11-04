@@ -27,7 +27,7 @@ Then, you need to include in your script the latest [SRL](https://github.com/SRL
 The start of your script should look something like this:
 
 ```
-programScript;
+program Script;
 {$i SRL/OSR.simba}
 {$i SRL/utils/rsclient.simba} //Optional... only if you not using SMART.
 {$i RSWalker/Walker.simba}
