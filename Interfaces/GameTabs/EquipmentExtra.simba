@@ -1,13 +1,55 @@
-// This seems a bit silly but it can be used to find which slot is an item equipped.
-function TRSEquipment.FindDTM(DTM: Integer): TIntArray;
+// Checks if the equipment slot is valid.
+function TRSEquipment.IsSlotValid(Idx: Int32): Boolean;
 begin
-  if Self.Open() then
-    Result := srl.FindDTMInTBA(DTM, Self.FBoxes, 1);
+  Result := InRange(Idx, Low(Self.FBoxes), High(Self.FBoxes));
 end;
 
+// This seems a bit silly but it can be used to find which slot is an item equipped.
+function TRSEquipment.FindDTM(DTM: Integer): Int32;
+var A: TIntArray;
+begin
+  if self.IsOpen() then
+  begin
+    A := srl.FindDTMInTBA(DTM, Self.FBoxes, 1);
+    if A = [] then
+      Result := -1
+    else
+      Result := A[0];
+  end;
+end;
+
+// The function is self explanatory I think.
 function TRSEquipment.Contains(DTM: Integer): Boolean; overload;
 begin
-  Result := Length(Self.FindDTM(DTM)) <> 0;
+  Result := Self.FindDTM(DTM) > -1;
 end;
 
+// Checks the charges for whatever is worn in the specified slot. Example items are infernal tools.
+function TRSEquipment.CheckSlotCharges(Slot: Int32): Int32;
+var
+  LineString: String;
+  StringNumbers: TExtendedArray;
+begin
+  if not Self.IsSlotValid(Slot) or (Self.IsOpen() and not Self.IsSlotUsed(Slot)) then
+    Exit(-1);
+
+  Self.MouseSlot(Slot, mouse_Move);
+
+  if ChooseOption.Open() then
+    if not ChooseOption.Select(['Check']) then
+      Exit(-1);
+
+  if not Chatbox.IsTabActive(ctAll) or not Chatbox.IsTabActive(ctGame) then
+    case Random(0, 1) of
+      1: Chatbox.ClickTab(ctAll);
+      2: Chatbox.ClickTab(ctGame);
+    end;
+
+  Chatbox.ScrollToEnd(True, 6000);
+  LineString := Chatbox.GetTextOnLine(7);
+  if not StringContains(LineString, 'charge') then
+    Exit(-1);
+  StringNumbers := LineString.ExtractNumbers();
+  Result := Round(StringNumbers.Reversed()[0]);
+end;
 
