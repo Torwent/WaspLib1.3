@@ -380,17 +380,9 @@ end;
 procedure TAntiban.ChatScrolling();
 begin
   DebugNote('[RND] Random scrolling on chat');
-  Self.RandomScroll();
+  Chatbox.RandomScroll();
 end;
 
-function TAntiban.RandomScroll(): Boolean;
-begin
-  case Random(0, 2) of
-    0: Result := Chatbox.ScrollUp(Round(Random(2000 * Biohash, 4000 * Biohash)));
-    1: Result := Chatbox.ScrollDown(Round(Random(3000 * Biohash, 4000 * Biohash)));
-    2: Result := Chatbox.ScrollDown(Round(Random(3500 * Biohash, 5000 * Biohash)));
-  end;
-end;
 
 procedure TAntiban.ToggleChatTab();
 var
@@ -494,7 +486,7 @@ begin
   if ChooseOption.Open() then
     ChooseOption.Select(['Check']);
 
-  Chatbox.ScrollDown(6000);
+  Chatbox.ScrollToEnd(True, 6000);
 end;
 
 

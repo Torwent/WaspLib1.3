@@ -319,13 +319,13 @@ begin
     Result := Self.CanScroll(True) or Self.CanScroll(False);
 end;
 
-// Finds the scroll bar position.
+// Finds the bank scroll bar position.
 function TRSBankScreen.GetScrollPosition(): Int32;
 var
   X, Y: Int32;
 begin
   FindColor(X, Y, 4282469, 485, 99, 495, 276);
-  Result := Y;
+  Result := Y - 100;
 end;
 
 // Scrolls the bankscreen in the given direction.
@@ -341,6 +341,22 @@ begin
   Mouse.Scroll(Random(MinSteps, MaxSteps), Down);
 
   Result := ScrollPosition <> Self.GetScrollPosition();
+end;
+
+// Scrolls bankscreen to the end.
+function TRSBankScreen.ScrollToEnd(Down: Boolean = True; WaitTime: UInt32 = 3000): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if not Self.CanScroll(Down) then
+      Exit(True);
+    Self.Scroll(Down, Random(4, 6), Random(6, 10));
+    Wait(100, 200);
+  until (GetTickCount() >= t);
+    Result := not Self.CanScroll(Down);
 end;
 
 // Fixes the scroll position if the DTM is visible so we can properly use other functions and procedures.

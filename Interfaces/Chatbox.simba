@@ -1,67 +1,68 @@
-function TRSChatbox.IsScrollableUp(): Boolean;
+// Checks if the chatbox is scrollable in the given direction.
+function TRSChatbox.CanScroll(Down: Boolean = True): Boolean;
 begin
-  Result := GetColor(505, 365) = 1778729;
+    Result := (Down and (GetColor(505, 440) = 1778729)) or
+              (not Down and (GetColor(505, 365) = 1778729));
 end;
 
-function TRSChatbox.IsScrollableDown(): Boolean;
+// Checks if the chatbox is scrollable.
+function TRSChatbox.CanScroll(): Boolean; overload;
 begin
-  Result := GetColor(505, 440) = 1778729;
+    Result := Self.CanScroll(True) or Self.CanScroll(False);
 end;
 
-function TRSChatbox.IsScrollable(): Boolean;
-begin
-  Result := Self.IsScrollableUp() or Self.IsScrollableDown();
-end;
-
-function TRSChatbox.ScrollUp(WaitTime: UInt64 = 1000): Boolean;
+// Finds the chatbox scroll bar position.
+function TRSChatbox.GetScrollPosition(): Int32;
 var
-  t: UInt64;
+  X, Y: Int32;
 begin
-  if not Self.IsScrollableUp() then
-    Exit(True);
-
-  Mouse.Move(Self.FLines.Merge());
-
-  t := GetTickCount() + WaitTime;
-  while (Self.IsScrollableUp()) do
-  begin
-    Mouse.Scroll(Random(2, 5), False);
-    if ((not Self.IsScrollableUp()) and (t > GetTickCount())) then
-      Exit(True);
-  end;
-
-  Result := True;
+  FindColor(X, Y, 4282469, 496, 360, 512, 440);
+  Result := Y - 361;
 end;
 
-function TRSChatbox.ScrollDown(WaitTime: UInt64 = 1000): Boolean;
+// Scrolls the chatbox in the given direction.
+function TRSChatbox.Scroll(Down: Boolean = True; MinSteps: Int32 = 2; MaxSteps: Int32 = 5): Boolean;
 var
-  t: UInt64;
+  ScrollPosition: Int32;
 begin
-  if not Self.IsScrollableDown() then
+  if not Self.CanScroll(Down) then
     Exit(True);
+  ScrollPosition := Self.GetScrollPosition();
 
-  Mouse.Move(Self.FLines.Merge());
+  Mouse.Move(Box(10, 344, 496, 458));
+  Mouse.Scroll(Random(MinSteps, MaxSteps), Down);
 
-  t := GetTickCount() + WaitTime;
-  while (Self.IsScrollableDown()) do
-  begin
-    Mouse.Scroll(Random(2, 5), True);
-    if ((not Self.IsScrollableDown()) and (t > GetTickCount())) then
-      Exit(True);
-  end;
-
-  Result := True;
+  Result := ScrollPosition <> Self.GetScrollPosition();
 end;
 
+// Random chatbox scrolling... good for antiban.
 function TRSChatbox.RandomScroll(): Boolean;
 begin
-  case Random(0, 2) of
-    0: Result := Self.ScrollUp(Random(1000, 2000));
-    1: Result := Self.ScrollDown(Random(1000, 2000));
-    2: Result := Self.ScrollDown(Random(2000, 3000));
+  case Random(0, 5) of
+    0: Result := Self.Scroll(False);        //Short scroll
+    1: Result := Self.Scroll(True);         //Short scroll
+    2: Result := Self.Scroll(False, 4, 8);  //Long scroll
+    3: Result := Self.Scroll(True, 4, 8);   //Long scroll
+    4: Result := Self.Scroll(False, 8, 14); //Very long scroll
+    5: Result := Self.Scroll(True, 8, 14);  //Very long scroll
   end;
 end;
 
+// Scrolls chatbox to the end.
+function TRSChatbox.ScrollToEnd(Down: Boolean = True; WaitTime: UInt32 = 3000): Boolean;
+var
+  t: UInt64;
+begin
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if not Self.CanScroll(Down) then
+      Exit(True);
+    Self.Scroll(Down, Random(4, 6), Random(6, 10));
+    Wait(100, 200);
+  until (GetTickCount() >= t);
+    Result := not Self.CanScroll(Down);
+end;
 
 
 function TRSChatbox.IsTabActive(Tab: EChatTab): Boolean;
