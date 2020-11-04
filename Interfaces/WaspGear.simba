@@ -1,0 +1,65 @@
+// Need to rework this whole thing... but my scripts are too tied to this atm due to the antiban unfortunately...
+
+type
+  TWasp = record
+    Antiban: TAntiban;
+    StatsDebugTick: Int64;
+  end;
+
+var
+  Wasp: TWasp;
+  CraftCapeDTM := DTMFromString('mggAAAHicY2NgYJjCxMAwA4inAXE/EM8C4qlA/Bgo9wqI3wHxeyC+B8SfgVhUUJAhxEGPIT3ACshjRMLkAAAg3Qr7');
+  DuelRingDTM := DTMFromString('mggAAAHicY2NgYNjJxMCwHYh3APEBIN4ExAeBuIGRgaEDiLuAuBWIW4C4FojvHpQCYwYGRjgW7BNlIA8AAE1QC7M=');
+
+
+
+function Wasp.HasItem(DTM: Integer; Equippable: Boolean = True; MouseMove: Boolean = True): Boolean;
+var
+  InvCheck, EquipCheck: Boolean = False;
+  i: Int32;
+begin
+  Result := False;
+  EquipCheck := not Equippable; //Quick way to skip checking the equipment if
+                                //the item is not equippable.
+  for i := 0 to 1 do
+  begin
+    if ((not InvCheck) and (not EquipCheck) and
+    (not Inventory.IsOpen()) and (not Equipment.IsOpen())) then begin
+      if (Random(0, 1) = 0) then
+        Inventory.Open()
+      else
+        Equipment.Open();
+    end else if (InvCheck and (not EquipCheck)) then
+      Equipment.Open()
+    else if (EquipCheck and (not InvCheck)) then
+      Inventory.Open();
+
+    if Inventory.IsOpen() then begin
+      if Inventory.FindDTM(DTM) then
+      begin
+        if MouseMove then
+          Inventory.MouseSlot(Inventory.FindDTM(DTM)[0]);
+        Exit(True);
+      end;
+      InvCheck := True;
+    end else if Equipment.IsOpen() then begin
+      if Equipment.FindDTM(DTM) then
+      begin
+        if MouseMove then
+          Equipment.MouseSlot(Equipment.FindDTM(DTM));
+        Exit(True);
+      end;
+      EquipCheck := True;
+    end;
+  end;
+end;
+
+
+procedure Wasp.Free();
+begin
+  FreeDTMs([CraftCapeDTM, DuelRingDTM]);
+end;
+
+begin
+  AddOnTerminate(@Wasp.Free);
+end;
