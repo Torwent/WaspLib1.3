@@ -64,6 +64,32 @@ begin
     Result := not Self.CanScroll(Down);
 end;
 
+function TRSChatbox.IsLineValid(Idx: Int32): Boolean;
+begin
+  Result := InRange(Idx, Low(Self.FLines), High(Self.FLines));
+end
+
+function TRSChatbox.WaitLineChange(Line: Int32; WaitTime: UInt32 = 600): Boolean;
+var
+  CurrentText: String;
+  t: UInt64;
+
+begin
+  if not Self.IsLineValid(Line) then
+    Exit(False);
+
+  CurrentText := Chatbox.GetTextOnLine(Line);
+  t := GetTickCount() + WaitTime;
+
+  repeat
+    if Chatbox.GetTextOnLine(Line) <> CurrentText then
+      Exit(True);
+    Wait(25, 50);
+  until (GetTickCount() >= t);
+
+  Result := Chatbox.GetTextOnLine(Line) <> CurrentText;
+end;
+
 
 function TRSChatbox.IsTabActive(Tab: EChatTab): Boolean;
 var
